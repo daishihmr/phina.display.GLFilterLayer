@@ -53,6 +53,8 @@ phina.namespace(function() {
       this.renderer = phina.display.CanvasRenderer(this.canvas2d);
 
       this.textureCanvas = phina.graphics.Canvas();
+      // 見える化
+      // document.body.appendChild(this.textureCanvas.domElement);
       
       // TODO 最適なサイズを計算する
       this.textureCanvas.setSize(512, 512);
@@ -183,10 +185,10 @@ phina.namespace(function() {
       ].flatten());
 
       var uvs = new Float32Array([
-        [0, 0],
-        [1, 0],
         [0, 1],
         [1, 1],
+        [0, 0],
+        [1, 0],
       ].flatten());
 
       this.positionVbo = gl.createBuffer();
@@ -212,6 +214,7 @@ phina.namespace(function() {
       this.texture0 = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, this.texture0);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      gl.generateMipmap(gl.TEXTURE_2D);
       gl.bindTexture(gl.TEXTURE_2D, null);
     },
 
@@ -224,6 +227,7 @@ phina.namespace(function() {
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, this.texture0);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      gl.generateMipmap(gl.TEXTURE_2D);
 
       this.setUniform("texture0", 0);
     },
