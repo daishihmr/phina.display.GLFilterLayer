@@ -23,7 +23,7 @@
     phina.asset.AssetLoader()
       .load({
         image: {
-          twinkle: "twinkle.jpeg",
+          phina: "phina.png",
         }
       })
       .then(function() {
@@ -32,7 +32,7 @@
           width: 640,
           height: 480,
           
-          // ネガポジ反転
+          // セピア
           shaderSource: [
             "precision mediump float;",
 
@@ -42,15 +42,16 @@
 
             "void main(void) {",
             "  vec4 tex = texture2D(texture0, vUv);",
-            "  gl_FragColor = vec4(1.0 - tex.rgb, tex.a);",
+            "  vec3 c = vec3((tex.r + tex.g + tex.b) / 3.0);",
+            "  gl_FragColor = vec4(c.r * 1.2, c.g * 1.05, c.b * 0.9, tex.a);",
             "}",
           ].join("\n"),
 
         }).addChildTo(scene);
 
-        phina.display.Sprite("twinkle")
+        phina.display.Sprite("phina")
           .setPosition(320, 240)
-          .setSize(320, 180)
+          .setSize(320, 320)
           .on("enterframe", function(e) {
             var f = e.app.ticker.frame;
             this.setRotation(Math.sin(f * 0.1) * 30);
