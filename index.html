@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+</head>
+
+<body>
+  <canvas id="world"></canvas>
+  <script src="phina.js"></script>
+  <script src="glfilterlayer.js"></script>
+  <script>
+  window.addEventListener("load", function() {
+    var app = phina.display.CanvasApp({
+      query: "#world",
+      width: 640,
+      height: 480,
+    });
+    app.run();
+
+    var scene = app.currentScene;
+
+    phina.asset.AssetLoader()
+      .load({
+        image: {
+          twinkle: "twinkle.jpeg",
+        }
+      })
+      .then(function() {
+
+        var layer = phina.display.GLFilterLayer().addChildTo(scene);
+        phina.display.Sprite("twinkle")
+          .setPosition(320, 240)
+          .setSize(320, 180)
+          .on("enterframe", function(e) {
+            var f = e.app.ticker.frame;
+            this.setRotation(Math.sin(f * 0.1) * 30);
+          })
+          .addChildTo(layer);
+
+      });
+  }, false);
+  </script>
+</body>
+
+</html>
