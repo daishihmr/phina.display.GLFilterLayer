@@ -53,6 +53,8 @@ phina.namespace(function() {
       this.renderer = phina.display.CanvasRenderer(this.canvas2d);
 
       this.textureCanvas = phina.graphics.Canvas();
+      
+      // TODO 最適なサイズを計算する
       this.textureCanvas.setSize(512, 512);
 
       this.domElement = document.createElement("canvas");
@@ -82,6 +84,7 @@ phina.namespace(function() {
       // 描画したcanvasの内容をtextureCanvasへリサイズして転写
       var ce = this.canvas2d.domElement;
       var tc = this.textureCanvas;
+      // TODO 切り出し範囲を最適化する
       tc.context.drawImage(
         ce,
         0, 0, ce.width, ce.height,
@@ -111,7 +114,7 @@ phina.namespace(function() {
      */
     _setup: function() {
       var gl = this.gl;
-      gl.clearColor(1.0, 1.0, 1.0, 1.0);
+      gl.clearColor(0.0, 0.0, 0.0, 0.0);
       this._setupProgram();
       this._setupVbo();
       this._setupTexture();

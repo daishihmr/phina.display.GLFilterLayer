@@ -28,7 +28,26 @@
       })
       .then(function() {
 
-        var layer = phina.display.GLFilterLayer().addChildTo(scene);
+        var layer = phina.display.GLFilterLayer({
+          width: 640,
+          height: 480,
+          
+          // ネガポジ反転
+          shaderSource: [
+            "precision mediump float;",
+
+            "uniform sampler2D texture0;",
+
+            "varying vec2 vUv;",
+
+            "void main(void) {",
+            "  vec4 tex = texture2D(texture0, vUv);",
+            "  gl_FragColor = vec4(1.0 - tex.rgb, tex.a);",
+            "}",
+          ].join("\n"),
+
+        }).addChildTo(scene);
+
         phina.display.Sprite("twinkle")
           .setPosition(320, 240)
           .setSize(320, 180)
