@@ -137,14 +137,6 @@ phina.namespace(function() {
     },
     
     /**
-     * オフスクリーンレンダリング用の描画領域を新たに生成する
-     */
-    createOffScreen: function(width, height) {
-      // TODO
-      return null;
-    },
-
-    /**
      * いろいろ初期化
      */
     _setup: function() {

@@ -6,7 +6,7 @@ phina.namespace(function() {
     depthRenderBuffer: null,
     texture: null,
 
-    init: function(gl) {
+    init: function(gl, width, height) {
       this.width = width || 512;
       this.height = height || 512;
 
