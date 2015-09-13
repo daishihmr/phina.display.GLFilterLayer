@@ -1,6 +1,6 @@
 phina.namespace(function() {
 
-  phina.define("phina.display.glfilterlayer.Screen", {
+  phina.define("phina.glfilter.Screen", {
 
     frameBuffer: null,
     depthRenderBuffer: null,

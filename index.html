@@ -9,7 +9,15 @@
   <canvas id="world"></canvas>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.5.1/dat.gui.js"></script>
   <script src="phina.js"></script>
-  <script src="glfilterlayer.js"></script>
+  <script src="glfilter/glfilterlayer.js"></script>
+  <script src="glfilter/screen.js"></script>
+  <script src="glfilter/shadernode.js"></script>
+  <script src="glfilter/scenerendernode.js"></script>
+  <script src="glfilter/destinationnode.js"></script>
+  <script src="glfilter/effectnode/sepianode.js"></script>
+  <script src="glfilter/effectnode/monotonenode.js"></script>
+  <script src="glfilter/effectnode/reversenode.js"></script>
+  <script src="glfilter/effectnode/zoomblurnode.js"></script>
   <script>
   window.addEventListener("load", function() {
     var app = phina.display.CanvasApp({
@@ -20,6 +28,10 @@
     app.run();
 
     var scene = app.currentScene;
+    var layer = phina.glfilter.GLFilterLayer({
+      width: 640,
+      height: 480,
+    }).addChildTo(scene);
 
     phina.asset.AssetLoader()
       .load({
@@ -29,58 +41,92 @@
       })
       .then(function() {
 
-        var effectSelector = EffectSelector(scene);
+        phina.display.Sprite("phina")
+          .setPosition(320, 240)
+          .setSize(320, 320)
+          .on("enterframe", function(e) {
+            var f = e.app.ticker.frame;
+            this.setRotation(Math.sin(f * 0.1) * 30);
+          })
+          .addChildTo(layer);
+
+        var effectSelector = EffectSelector(layer);
 
         var gui = new dat.GUI();
-        gui.add(effectSelector, "effect", Object.keys(SHADERS))
+        gui.add(effectSelector, "effect", ["none", "sepia", "monotone", "reverse", "zoomBlur", "sepia + zoomBlur"])
           .name("effect")
           .onChange(function(value) {
             effectSelector.effect = value;
           });
+
       });
   }, false);
 
   phina.define("EffectSelector", {
     currentLayer: null,
-    init: function(scene) {
-      this.scene = scene;
-      this.effect = Object.keys(SHADERS)[0];
+    init: function(layer) {
+      this.layer = layer;
+      this.effect = "none";
     },
     setEffect: function(effectType) {
       this._effect = effectType;
 
-      var scene = this.scene;
+      var layer = this.layer;
 
-      while (scene.children.length) {
-        scene.removeChild(scene.children[0]);
+      layer.clear("enterframe");
+
+      var newNode = null;
+      var newNode2 = null;
+      switch (effectType) {
+        case "sepia":
+          newNode = phina.glfilter.SepiaNode(layer.gl);
+          layer.headNode
+            .connectTo(newNode)
+            .connectTo(layer.destNode);
+          break;
+        case "monotone":
+          newNode = phina.glfilter.MonotoneNode(layer.gl);
+          layer.headNode
+            .connectTo(newNode)
+            .connectTo(layer.destNode);
+          break;
+        case "reverse":
+          newNode = phina.glfilter.ReverseNode(layer.gl);
+          layer.headNode
+            .connectTo(newNode)
+            .connectTo(layer.destNode);
+          break;
+        case "zoomBlur":
+          newNode = phina.glfilter.ZoomBlurNode(layer.gl);
+          layer.headNode
+            .connectTo(newNode)
+            .connectTo(layer.destNode);
+
+          layer.on("enterframe", function(e) {
+            var p = e.app.pointer;
+            newNode.setUniform(layer.gl, "x", p.x);
+            newNode.setUniform(layer.gl, "y", p.y);
+          });
+          break;
+        case "sepia + zoomBlur":
+          newNode = phina.glfilter.SepiaNode(layer.gl);
+          newNode2 = phina.glfilter.ZoomBlurNode(layer.gl);
+          layer.headNode
+            .connectTo(newNode)
+            .connectTo(newNode2)
+            .connectTo(layer.destNode);
+
+          layer.on("enterframe", function(e) {
+            var p = e.app.pointer;
+            newNode2.setUniform(layer.gl, "x", p.x);
+            newNode2.setUniform(layer.gl, "y", p.y);
+          });
+          break;
       }
 
-      var param = {
-        width: 640,
-        height: 480,
-        shaderSource: SHADERS[effectType].source,
-      };
-      if (SHADERS[effectType].uniformData) {
-        param.uniformData = SHADERS[effectType].uniformData;
+      if (!newNode) {
+        layer.headNode.connectTo(layer.destNode);
       }
-
-      var layer = phina.display.GLFilterLayer(param).addChildTo(scene);
-      if (effectType == "zoomBlur") {
-        layer.on("enterframe", function(e) {
-          var pointer = e.app.pointer;
-          this.setUniform("x", pointer.x * 1024 / 640);
-          this.setUniform("y", pointer.y * 1024 / 480);
-        });
-      }
-
-      phina.display.Sprite("phina")
-        .setPosition(320, 240)
-        .setSize(320, 320)
-        .on("enterframe", function(e) {
-          var f = e.app.ticker.frame;
-          this.setRotation(Math.sin(f * 0.1) * 30);
-        })
-        .addChildTo(layer);
     },
     _accessor: {
       "effect": {
@@ -93,103 +139,6 @@
       }
     }
   });
-
-  var SHADERS = {
-
-    "sepia": {
-      source: [
-        "precision mediump float;",
-
-        "uniform sampler2D texture0;",
-
-        "varying vec2 vUv;",
-
-        "void main(void) {",
-        "  vec4 tex = texture2D(texture0, vUv);",
-        "  vec3 c = vec3((tex.r + tex.g + tex.b) / 3.0);",
-        "  gl_FragColor = vec4(c.r * 1.2, c.g * 1.05, c.b * 0.9, tex.a);",
-        "}",
-      ].join("\n"),
-    },
-
-    "monotone": {
-      source: [
-        "precision mediump float;",
-
-        "uniform sampler2D texture0;",
-
-        "varying vec2 vUv;",
-
-        "void main(void) {",
-        "  vec4 tex = texture2D(texture0, vUv);",
-        "  vec3 c = vec3((tex.r + tex.g + tex.b) / 3.0);",
-        "  gl_FragColor = vec4(c, tex.a);",
-        "}",
-      ].join("\n"),
-    },
-
-    "reverse": {
-      source: [
-        "precision mediump float;",
-
-        "uniform sampler2D texture0;",
-
-        "varying vec2 vUv;",
-
-        "void main(void) {",
-        "  vec4 tex = texture2D(texture0, vUv);",
-        "  gl_FragColor = vec4(1.0 - tex.rgb, tex.a);",
-        "}",
-      ].join("\n"),
-    },
-
-    "zoomBlur": {
-      uniformData: [{
-        name: "texture0",
-        type: "texture",
-      }, {
-        name: "x",
-        type: "float",
-      }, {
-        name: "y",
-        type: "float",
-      }, ],
-      source: [
-        "precision mediump float;",
-
-        "uniform sampler2D texture0;",
-        "uniform float x;",
-        "uniform float y;",
-
-        "varying vec2 vUv;",
-
-        "const float nFrag = 1.0 / 30.0;",
-        "const float strength = 8.0;",
-
-        "float rnd(vec3 scale, float seed){",
-        "    return fract(sin(dot(gl_FragCoord.stp + seed, scale)) * 43758.5453 + seed);",
-        "}",
-
-        "void main(void){",
-        "    vec2  center = vec2(x / 1024.0, y / 1024.0);",
-        "    vec3  destColor = vec3(0.0);",
-        "    float random = rnd(vec3(12.9898, 78.233, 151.7182), 0.0);",
-        "    vec2  fcc = vUv - center;",
-        "    float totalWeight = 0.0;",
-
-        "    for(float i = 0.0; i <= 30.0; i++){",
-        "        float percent = (i + random) * nFrag;",
-        "        float weight = percent - percent * percent;",
-        "        vec2  t = vUv - fcc * percent * strength * nFrag;",
-        "        destColor += texture2D(texture0, t).rgb * weight;",
-        "        totalWeight += weight;",
-        "    }",
-        "    gl_FragColor = vec4(destColor / totalWeight, 1.0);",
-        "}",
-      ].join("\n"),
-    },
-
-  }
   </script>
 </body>
 

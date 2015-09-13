@@ -1,27 +1,28 @@
 phina.namespace(function() {
 
-  phina.define("phina.display.glfilterlayer.DestinationNode", {
+  phina.define("phina.glfilter.DestinationNode", {
+    superClass: "phina.glfilter.ShaderNode",
 
-    init: function(gl, width, height) {
-      this.width = width;
-      this.height = height;
+    init: function(gl, params) {
+      this.superInit(gl, params);
     },
-    _createScreen: function(gl, width, height) {
+    _createScreen: function() {
+      // なにも返さない
       return null;
     },
 
     connectTo: function() {
       // なにもしない
+      return null;
     },
 
     render: function(gl, prevScreen) {
-      // TODO bind attribute
+      gl.useProgram(this.program);
+      this.setAttributes(gl);
 
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, prevScreen.texture);
-      this.setUniform("texture", 0);
-
-      // TODO bind uniform
+      this.setUniform(gl, "texture", 0);
 
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       gl.viewport(0, 0, this.width, this.height);

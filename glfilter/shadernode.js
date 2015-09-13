@@ -1,6 +1,6 @@
 phina.namespace(function() {
 
-  phina.define("phina.display.glfilterlayer.ShaderNode", {
+  phina.define("phina.glfilter.ShaderNode", {
 
     nextNode: null,
 
@@ -12,20 +12,40 @@ phina.namespace(function() {
     _positionVbo: null,
     _uvVbo: null,
 
-    init: function(gl, width, height) {
-      this.screen = this._createScreen(gl, width, height);
-      this.width = width || 512;
-      this.height = height || 512;
+    init: function(gl, params) {
+      this.$extend(phina.glfilter.ShaderNode.defaultParams, params);
+
+      this.screen = this._createScreen(gl, this.width, this.height);
 
       this._setupProgram(gl);
       this._setupVbo(gl);
     },
     _createScreen: function(gl, width, height) {
-      return phina.display.glfilterlayer.Screen(gl, width, height);
+      return phina.glfilter.Screen(gl, width, height);
     },
 
     connectTo: function(nextNode) {
       this.nextNode = nextNode;
+      return nextNode;
+    },
+
+    /** for override */
+    getAttributeData: function() {
+      return [{
+        name: "position",
+        size: 2,
+      }, {
+        name: "uv",
+        size: 2,
+      }, ];
+    },
+
+    /** for override */
+    getUniformData: function() {
+      return [{
+        name: "texture0",
+        type: "texture",
+      }, ];
     },
 
     /** for override */
@@ -45,11 +65,11 @@ phina.namespace(function() {
 
     render: function(gl, prevScreen) {
       gl.useProgram(this.program);
-      this.setAttributes();
+      this.setAttributes(gl);
 
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, prevScreen.texture);
-      this.setUniform("texture0", 0);
+      this.setUniform(gl, "texture0", 0);
 
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.screen.frameBuffer);
       gl.viewport(0, 0, this.width, this.height);
@@ -62,25 +82,23 @@ phina.namespace(function() {
       }
     },
 
-    setAttributes: function() {
-      var gl = this.gl;
-
+    setAttributes: function(gl) {
       var position = this.attributes.position;
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.positionVbo);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this._positionVbo);
       gl.enableVertexAttribArray(position.location);
       gl.vertexAttribPointer(position.location, position.size, gl.FLOAT, false, 0, 0);
 
       var uv = this.attributes.uv;
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.uvVbo);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this._uvVbo);
       gl.enableVertexAttribArray(uv.location);
       gl.vertexAttribPointer(uv.location, uv.size, gl.FLOAT, false, 0, 0);
     },
 
-    setUniform: function(name, value) {
-      var gl = this.gl;
+    setUniform: function(gl, name, value) {
       var uni = this.uniforms[name];
 
       if (uni) {
+        gl.useProgram(this.program);
         switch (uni.type) {
           case "float":
             gl.uniform1f(uni.location, value);
@@ -133,7 +151,7 @@ phina.namespace(function() {
         throw new Error(gl.getProgramInfoLog(program));
       }
 
-      this.attributes = this.attributeData.reduce(function(result, attr) {
+      this.attributes = this.getAttributeData().reduce(function(result, attr) {
         result[attr.name] = {
           size: attr.size,
           location: gl.getAttribLocation(program, attr.name),
@@ -141,7 +159,7 @@ phina.namespace(function() {
         return result;
       }, {});
 
-      this.uniforms = this.uniformData.reduce(function(result, uni) {
+      this.uniforms = this.getUniformData().reduce(function(result, uni) {
         result[uni.name] = {
           type: uni.type,
           location: gl.getUniformLocation(program, uni.name),
@@ -161,10 +179,10 @@ phina.namespace(function() {
       ].flatten());
 
       var uvs = new Float32Array([
-        [0, 1],
-        [1, 1],
         [0, 0],
         [1, 0],
+        [0, 1],
+        [1, 1],
       ].flatten());
 
       this._positionVbo = gl.createBuffer();
@@ -177,6 +195,15 @@ phina.namespace(function() {
       gl.bufferData(gl.ARRAY_BUFFER, uvs, gl.STATIC_DRAW);
       gl.bindBuffer(gl.ARRAY_BUFFER, null);
     },
+
+    _static: {
+      defaultParams: {
+
+        width: 512,
+        height: 512,
+
+      }
+    }
 
   });
 
