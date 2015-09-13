@@ -5,15 +5,13 @@ phina.namespace(function() {
 
     /**
      * 子孫要素の描画の面倒を自分で見る
-     * 通称「親の世話にはならない」フラグ
-     * 親のCanvasRendererから参照される
      */
-    drawChildrenBySelf: true,
+    childrenVisible: false,
 
     /** 子孫要素を普通に描画するためのキャンバス */
     canvas2d: null,
     /** canvas2dに描画するレンダラー */
-    renderer: null,
+    renderer2d: null,
     /** 
      * canvas2dの内容をWebGLテクスチャとして使うためのキャンバス
      * 幅と高さが2の累乗
@@ -50,18 +48,22 @@ phina.namespace(function() {
       this.canvas2d = phina.graphics.Canvas();
       this.canvas2d.setSize(this.width, this.height);
 
-      this.renderer = phina.display.CanvasRenderer(this.canvas2d);
+      this.renderer2d = phina.display.CanvasRenderer(this.canvas2d);
 
       this.textureCanvas = phina.graphics.Canvas();
       // 見える化
       // document.body.appendChild(this.textureCanvas.domElement);
-      
-      // TODO 最適なサイズを計算する
-      this.textureCanvas.setSize(512, 512);
+
+      // 最適なサイズを計算する
+      var m = Math.max(this.width, this.height);
+      var size = Math.pow(2, Math.floor(Math.log(m) / Math.log(2)) + 1);
+      this.textureCanvas.setSize(size, size);
 
       this.domElement = document.createElement("canvas");
-      this.domElement.width = this.width;
-      this.domElement.height = this.height;
+      this.domElement.width = size;
+      this.domElement.height = size;
+      // 見える化
+      // document.body.appendChild(this.domElement);
 
       this.gl = this.domElement.getContext("webgl");
 
@@ -79,19 +81,28 @@ phina.namespace(function() {
       if (this.children.length > 0) {
         var tempChildren = this.children.slice();
         for (var i = 0, len = tempChildren.length; i < len; ++i) {
-          this.renderer.renderObject(tempChildren[i]);
+          this.renderer2d.renderObject(tempChildren[i]);
         }
       }
 
       // 描画したcanvasの内容をtextureCanvasへリサイズして転写
-      var ce = this.canvas2d.domElement;
-      var tc = this.textureCanvas;
-      // TODO 切り出し範囲を最適化する
-      tc.context.drawImage(
-        ce,
-        0, 0, ce.width, ce.height,
-        0, 0, tc.width, tc.height // ←2の累乗
-      );
+      var c2d = this.canvas2d.domElement;
+      var tex = this.textureCanvas;
+      if (c2d.width < c2d.height) {
+        var destWidth = tex.width * c2d.height / tex.height;
+        tex.context.drawImage(
+          c2d,
+          0, 0, c2d.width, c2d.height,
+          (tex.width - destWidth) * 0.5, 0, destWidth, tex.height
+        );
+      } else {
+        var destHeight = tex.height * c2d.width / tex.width;
+        tex.context.drawImage(
+          c2d,
+          0, 0, c2d.width, c2d.height,
+          0, (tex.height - destHeight) * 0.5, tex.width, destHeight
+        );
+      }
 
       var gl = this.gl;
 
@@ -107,8 +118,30 @@ phina.namespace(function() {
       gl.flush();
 
       // glに描いたものをcanvasに転写
-      var elm = this.domElement;
-      canvas.context.drawImage(elm, 0, 0, elm.width, elm.height);
+      var glcanvas = this.domElement;
+      if (c2d.width < c2d.height) {
+        var srcWidth = tex.width * c2d.height / tex.height;
+        canvas.context.drawImage(
+          glcanvas,
+          (tex.width - srcWidth) * 0.5, 0, srcWidth, tex.height,
+          0, 0, canvas.width, canvas.height
+        );
+      } else {
+        var srcHeight = tex.height * c2d.width / tex.width;
+        canvas.context.drawImage(
+          glcanvas,
+          0, (tex.height - srcHeight) * 0.5, tex.width, srcHeight,
+          0, 0, canvas.width, canvas.height
+        );
+      }
+    },
+    
+    /**
+     * オフスクリーンレンダリング用の描画領域を新たに生成する
+     */
+    createOffScreen: function(width, height) {
+      // TODO
+      return null;
     },
 
     /**

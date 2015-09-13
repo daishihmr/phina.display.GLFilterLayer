@@ -3617,6 +3617,8 @@ phina.namespace(function() {
     /// 子供
     children: null,
 
+    childrenVisible: true,
+
     /**
      * @constructor
      */
@@ -5831,7 +5833,7 @@ phina.namespace(function() {
         if (obj.draw) obj.draw(this.canvas);
 
         // 子供たちも実行
-        if (obj.children.length > 0 && !obj.drawChildrenBySelf) {
+        if (obj.childrenVisible && obj.children.length > 0) {
             var tempChildren = obj.children.slice();
             for (var i=0,len=tempChildren.length; i<len; ++i) {
                 this.renderObject(tempChildren[i]);
@@ -5844,7 +5846,7 @@ phina.namespace(function() {
         if (obj.draw) obj.draw(this.canvas);
 
         // 子供たちも実行
-        if (obj.children.length > 0 && !obj.drawChildrenBySelf) {
+        if (obj.childrenVisible && obj.children.length > 0) {
             var tempChildren = obj.children.slice();
             for (var i=0,len=tempChildren.length; i<len; ++i) {
                 this.renderObject(tempChildren[i]);
