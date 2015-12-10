@@ -8,7 +8,7 @@
 <body>
   <canvas id="world"></canvas>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.5.1/dat.gui.js"></script>
-  <script src="phina.js"></script>
+  <script src="https://cdn.rawgit.com/phi-jp/phina.js/v0.1.1/build/phina.js"></script>
   <script src="glfilter/glfilterlayer.js"></script>
   <script src="glfilter/screen.js"></script>
   <script src="glfilter/shadernode.js"></script>
@@ -18,20 +18,18 @@
   <script src="glfilter/effectnode/monotonenode.js"></script>
   <script src="glfilter/effectnode/reversenode.js"></script>
   <script src="glfilter/effectnode/zoomblurnode.js"></script>
+  <script src="glfilter/effectnode/brightnesscontrastnode.js"></script>
   <script>
-  window.addEventListener("load", function() {
+  var SCREEN_WIDTH = 640;
+  var SCREEN_HEIGHT = 480;
+
+  phina.main(function() {
     var app = phina.display.CanvasApp({
       query: "#world",
-      width: 640,
-      height: 480,
+      width: SCREEN_WIDTH,
+      height: SCREEN_HEIGHT,
     });
     app.run();
-
-    var scene = app.currentScene;
-    var layer = phina.glfilter.GLFilterLayer({
-      width: 640,
-      height: 480,
-    }).addChildTo(scene);
 
     phina.asset.AssetLoader()
       .load({
@@ -40,27 +38,50 @@
         }
       })
       .then(function() {
-
-        phina.display.Sprite("phina")
-          .setPosition(320, 240)
-          .setSize(320, 320)
-          .on("enterframe", function(e) {
-            var f = e.app.ticker.frame;
-            this.setRotation(Math.sin(f * 0.1) * 30);
-          })
-          .addChildTo(layer);
-
-        var effectSelector = EffectSelector(layer);
-
-        var gui = new dat.GUI();
-        gui.add(effectSelector, "effect", ["none", "sepia", "monotone", "reverse", "zoomBlur", "sepia + zoomBlur"])
-          .name("effect")
-          .onChange(function(value) {
-            effectSelector.effect = value;
-          });
-
+        app.replaceScene(MainScene());
       });
-  }, false);
+  });
+
+  phina.define("MainScene", {
+    superClass: "phina.display.CanvasScene",
+    init: function() {
+      this.superInit({
+        width: SCREEN_WIDTH,
+        height: SCREEN_HEIGHT,
+      });
+
+      var layer = phina.glfilter.GLFilterLayer({
+        width: SCREEN_WIDTH,
+        height: SCREEN_HEIGHT,
+      }).addChildTo(this);
+
+      phina.display.Sprite("phina")
+        .setPosition(SCREEN_WIDTH * 0.5, SCREEN_HEIGHT * 0.5)
+        .setScale(SCREEN_WIDTH / 1700 * 0.5)
+        .on("enterframe", function(e) {
+          var f = e.app.ticker.frame;
+          this.setRotation(Math.sin(f * 0.1) * 30);
+        })
+        .addChildTo(layer);
+
+      var effectSelector = EffectSelector(layer);
+
+      var gui = new dat.GUI();
+      gui.add(effectSelector, "effect", [
+          "none",
+          "sepia",
+          "monotone",
+          "reverse",
+          "zoomBlur",
+          "sepia + zoomBlur",
+          "brightness contrast",
+        ])
+        .name("effect")
+        .onChange(function(value) {
+          effectSelector.effect = value;
+        });
+    }
+  });
 
   phina.define("EffectSelector", {
     currentLayer: null,
@@ -80,46 +101,45 @@
       switch (effectType) {
         case "sepia":
           newNode = phina.glfilter.SepiaNode(layer.gl);
-          layer.headNode
-            .connectTo(newNode)
-            .connectTo(layer.destNode);
+          layer.setPasses(newNode);
           break;
         case "monotone":
           newNode = phina.glfilter.MonotoneNode(layer.gl);
-          layer.headNode
-            .connectTo(newNode)
-            .connectTo(layer.destNode);
+          layer.setPasses(newNode);
           break;
         case "reverse":
           newNode = phina.glfilter.ReverseNode(layer.gl);
-          layer.headNode
-            .connectTo(newNode)
-            .connectTo(layer.destNode);
+          layer.setPasses(newNode);
           break;
         case "zoomBlur":
           newNode = phina.glfilter.ZoomBlurNode(layer.gl);
-          layer.headNode
-            .connectTo(newNode)
-            .connectTo(layer.destNode);
+          layer.setPasses(newNode);
 
           layer.on("enterframe", function(e) {
             var p = e.app.pointer;
-            newNode.setUniform(layer.gl, "x", p.x);
-            newNode.setUniform(layer.gl, "y", p.y);
+            newNode.x = p.x;
+            newNode.y = p.y;
           });
           break;
         case "sepia + zoomBlur":
           newNode = phina.glfilter.SepiaNode(layer.gl);
           newNode2 = phina.glfilter.ZoomBlurNode(layer.gl);
-          layer.headNode
-            .connectTo(newNode)
-            .connectTo(newNode2)
-            .connectTo(layer.destNode);
+          layer.setPasses(newNode, newNode2);
 
           layer.on("enterframe", function(e) {
             var p = e.app.pointer;
-            newNode2.setUniform(layer.gl, "x", p.x);
-            newNode2.setUniform(layer.gl, "y", p.y);
+            newNode2.x = p.x;
+            newNode2.y = p.y;
+          });
+          break;
+        case "brightness contrast":
+          newNode = phina.glfilter.BrightnessContrastNode(layer.gl);
+          layer.setPasses(newNode);
+
+          layer.on("enterframe", function(e) {
+            var p = e.app.pointer;
+            newNode.brightness = p.x / SCREEN_WIDTH;
+            newNode.contrast = p.y / SCREEN_HEIGHT;
           });
           break;
       }

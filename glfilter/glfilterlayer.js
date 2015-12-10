@@ -6,7 +6,7 @@ phina.namespace(function() {
     /**
      * 子孫要素の描画の面倒を自分で見る
      */
-    childrenVisible: false,
+    renderChildBySelf: true,
 
     /** 子孫要素を普通に描画するためのキャンバス */
     canvas2d: null,
@@ -62,6 +62,23 @@ phina.namespace(function() {
       });
 
       this.headNode.connectTo(this.destNode);
+    },
+
+    setPasses: function(passes) {
+      if (arguments.length > 1) {
+        passes = Array.prototype.slice.call(arguments, 0);
+      }
+      if (passes instanceof Array) {
+        passes = passes.flatten();
+      } else {
+        passes = [passes];
+      }
+
+      var p = this.headNode;
+      passes.forEach(function(pass) {
+        p = p.connectTo(pass);
+      });
+      p.connectTo(this.destNode);
     },
 
     draw: function(canvas) {

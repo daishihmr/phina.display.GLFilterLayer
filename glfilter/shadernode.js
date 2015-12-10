@@ -63,6 +63,9 @@ phina.namespace(function() {
       ].join("\n");
     },
 
+    /** for override */
+    setUniforms: function(gl) {},
+
     render: function(gl, prevScreen) {
       gl.useProgram(this.program);
       this.setAttributes(gl);
@@ -70,6 +73,8 @@ phina.namespace(function() {
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, prevScreen.texture);
       this.setUniform(gl, "texture0", 0);
+      
+      this.setUniforms(gl);
 
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.screen.frameBuffer);
       gl.viewport(0, 0, this.width, this.height);
@@ -93,7 +98,7 @@ phina.namespace(function() {
       gl.enableVertexAttribArray(uv.location);
       gl.vertexAttribPointer(uv.location, uv.size, gl.FLOAT, false, 0, 0);
     },
-
+    
     setUniform: function(gl, name, value) {
       var uni = this.uniforms[name];
 

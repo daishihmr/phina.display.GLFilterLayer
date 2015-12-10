@@ -2,6 +2,9 @@ phina.namespace(function() {
 
   phina.define("phina.glfilter.ZoomBlurNode", {
     superClass: "phina.glfilter.ShaderNode",
+    
+    x: 0,
+    y: 0,
 
     init: function(gl, params) {
       this.superInit(gl, params);
@@ -54,6 +57,11 @@ phina.namespace(function() {
         "    gl_FragColor = vec4(destColor / totalWeight, 1.0);",
         "}",
       ].join("\n");
+    },
+    
+    setUniforms: function(gl) {
+      this.setUniform(gl, "x", this.x);
+      this.setUniform(gl, "y", this.y);
     },
 
   });
