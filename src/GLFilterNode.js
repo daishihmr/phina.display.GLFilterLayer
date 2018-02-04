@@ -8,7 +8,12 @@ phina.namespace(function() {
   // mat4.lookAt(viewMatrix, [0, 0, 1], [0, 0, 0], [0, 1, 0]);
   // mat4.mul(mvpMatrix, projectionMatrix, viewMatrix);
   // mat4.mul(mvpMatrix, mvpMatrix, modelMatrix);
-  var mvpMatrix = new Float32Array([2, 0, 0, 0, 0, 2, 0, 0, 0, 0, -10, 0, 0, 0, 0, 1]);
+  var mvpMatrix = new Float32Array([ //
+    2, 0, 0, 0, //
+    0, 2, 0, 0, //
+    0, 0, -10, 0, //
+    0, 0, 0, 1, //
+  ]);
 
   phina.define("phina.glfilter.GLFilterNode", {
 
@@ -135,7 +140,7 @@ phina.namespace(function() {
       this.superInit();
     },
 
-    render: function(src/*, dst*/) {
+    render: function(src /*, dst*/ ) {
       var gl = this.gl;
 
       phigl.Framebuffer.unbind(gl);

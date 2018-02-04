@@ -11,9 +11,7 @@
   <canvas id="app"></canvas>
 
   <script src="https://rawgit.com/phinajs/phina.js/develop/build/phina.js"></script>
-  <!-- <script src="https://rawgit.com/daishihmr/phigl.js/develop/build/phigl.js"></script> -->
-  <script src="/phigl.js/build/phigl.js"></script>
-  <script src="https://rawgit.com/toji/gl-matrix/v2.4.0/dist/gl-matrix.js"></script>
+  <script src="https://rawgit.com/daishihmr/phigl.js/develop/build/phigl.js"></script>
   <script src="../build/phina.glfilter.js"></script>
   <script>
   phina.globalize();
@@ -24,7 +22,7 @@
       startLabel: "main",
       width: 1500,
       height: 850,
-      fit: false,
+      // fit: false,
       assets: {
         image: {
           "bg": "bg.jpg",
@@ -85,12 +83,12 @@
           x: this.gridX.span(4),
         }, 1000, "easeInOutQuad")
         .call(() => filter0.enabled = !filter0.enabled)
-        // .call(() => filter1.enabled = !filter1.enabled)
+        .call(() => filter1.enabled = !filter1.enabled)
         .to({
           x: this.gridX.span(12),
         }, 1000, "easeInOutQuad")
         .call(() => filter0.enabled = !filter0.enabled)
-        // .call(() => filter1.enabled = !filter1.enabled)
+        .call(() => filter1.enabled = !filter1.enabled)
         .setLoop(true);
 
     },
