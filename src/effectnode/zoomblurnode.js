@@ -1,30 +1,17 @@
 phina.namespace(function() {
 
   phina.define("phina.glfilter.ZoomBlurNode", {
-    superClass: "phina.glfilter.ShaderNode",
+    superClass: "phina.glfilter.GLFilterNode",
 
-    init: function(gl, params) {
-      this.superInit(gl, params);
+    init: function() {
+      this.superInit();
     },
 
-    getUniformData: function() {
-      return [{
-        name: "texture0",
-        type: "texture",
-      }, {
-        name: "x",
-        type: "float",
-      }, {
-        name: "y",
-        type: "float",
-      }, ];
-    },
-
-    getShaderSource: function() {
+    getFragmentShaderSource: function() {
       return [
         "precision mediump float;",
 
-        "uniform sampler2D texture0;",
+        "uniform sampler2D texture;",
         "uniform float x;",
         "uniform float y;",
 
@@ -38,28 +25,28 @@ phina.namespace(function() {
         "}",
 
         "void main(void){",
-        "    vec2  center = vec2(x / {0}, 1.0 - y / {1});".format(floatToString(this.width), floatToString(this.height)),
-        "    vec3  destColor = vec3(0.0);",
+        "    vec2  center = vec2(x, 1.0 - y);",
+        "    vec4  destColor = vec4(0.0);",
         "    float random = rnd(vec3(12.9898, 78.233, 151.7182), 0.0);",
         "    vec2  fcc = vUv - center;",
         "    float totalWeight = 0.0;",
-
+        "",
         "    for(float i = 0.0; i <= 30.0; i++){",
         "        float percent = (i + random) * nFrag;",
         "        float weight = percent - percent * percent;",
         "        vec2  t = vUv - fcc * percent * strength * nFrag;",
-        "        destColor += texture2D(texture0, t).rgb * weight;",
+        "        vec4 col = texture2D(texture, t);",
+        "        destColor += col * weight;",
         "        totalWeight += weight;",
         "    }",
-        "    gl_FragColor = vec4(destColor / totalWeight, 1.0);",
+        "    gl_FragColor = vec4(destColor / totalWeight);",
         "}",
       ].join("\n");
     },
+    getFragmentShaderUniforms: function() {
+      return ["texture", "x", "y"];
+    },
 
   });
-
-  var floatToString = function(f) {
-    return (f % 1) ? "" + f : "" + f + ".0";
-  };
 
 });

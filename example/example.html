@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width,height=device-height,user-scalable=no,initial-scale=1,maximum-scale=1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta charset="UTF-8">
+</head>
+<body>
+
+  <canvas id="app"></canvas>
+
+  <script src="https://rawgit.com/phinajs/phina.js/develop/build/phina.js"></script>
+  <!-- <script src="https://rawgit.com/daishihmr/phigl.js/develop/build/phigl.js"></script> -->
+  <script src="/phigl.js/build/phigl.js"></script>
+  <script src="https://rawgit.com/toji/gl-matrix/v2.4.0/dist/gl-matrix.js"></script>
+  <script src="../build/phina.glfilter.js"></script>
+  <script>
+  phina.globalize();
+
+  phina.main(() => {
+    const app = GameApp({
+      domElement: document.querySelector("#app"),
+      startLabel: "main",
+      width: 1500,
+      height: 850,
+      fit: false,
+      assets: {
+        image: {
+          "bg": "bg.jpg",
+          "logo": "logo.png",
+        },
+      },
+    }).run();
+
+    app.enableStats();
+  });
+
+  phina.define("MainScene", {
+    superClass: "DisplayScene",
+
+    init: function() {
+      this.superInit({
+        width: 1500,
+        height: 850,
+      });
+
+      const glFilterLayer0 = GLFilterLayer({
+        width: 1500,
+        height: 850,
+        originX: 0,
+        originY: 0,
+        x: 0,
+        y: 0,
+      }).addChildTo(this);
+
+      const bg = Sprite("bg")
+        .setPosition(this.gridX.center(), this.gridY.center())
+        .addChildTo(glFilterLayer0);
+
+      const glFilterLayer1 = GLFilterLayer({
+        width: 1500,
+        height: 850,
+        originX: 0,
+        originY: 0,
+        x: 0,
+        y: 0,
+      }).addChildTo(this);
+
+      const logo = Sprite("logo")
+        .setPosition(this.gridX.span(16), this.gridY.center())
+        .addChildTo(glFilterLayer1);
+
+      const filter0 = MonotoneNode();
+      glFilterLayer0.addFilterNode(filter0);
+      filter0.enabled = false;
+
+      const filter1 = ZoomBlurNode();
+      filter1.uniformValues["x"] = 0.5;
+      filter1.uniformValues["y"] = 0.5;
+      glFilterLayer1.addFilterNode(filter1);
+
+      logo.tweener
+        .to({
+          x: this.gridX.span(4),
+        }, 1000, "easeInOutQuad")
+        .call(() => filter0.enabled = !filter0.enabled)
+        // .call(() => filter1.enabled = !filter1.enabled)
+        .to({
+          x: this.gridX.span(12),
+        }, 1000, "easeInOutQuad")
+        .call(() => filter0.enabled = !filter0.enabled)
+        // .call(() => filter1.enabled = !filter1.enabled)
+        .setLoop(true);
+
+    },
+  });
+
+  </script>
+
+</body>
+</html>
