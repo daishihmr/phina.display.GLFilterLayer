@@ -129,6 +129,83 @@ phina.namespace(function() {
 });
 phina.namespace(function() {
 
+  phina.define("phina.glfilter.BloomNode", {
+    superClass: "phina.glfilter.Node",
+
+    init: function() {
+      this.superInit();
+      this.luminanceNode = phina.glfilter.LuminanceFilter();
+      this.gaussianNode = phina.glfilter.MultiGaussianNode(4, 4);
+      this.mixNode = phina.glfilter.MixNode(1.0, 1.0);
+
+      this.minBright = 0.0;
+    },
+
+    _setup: function() {
+      this.superMethod("_setup");
+
+      var gl = this.layer.gl;
+      var sizeInfo = this.layer.sizeInfo;
+
+      this.luminanceNode.layer = this.layer;
+      this.gaussianNode.layer = this.layer;
+      this.mixNode.layer = this.layer;
+
+      this.bloomPath0 = phigl.Framebuffer(gl, sizeInfo.width, sizeInfo.height);
+      this.bloomPath1 = phigl.Framebuffer(gl, sizeInfo.width, sizeInfo.height);
+    },
+
+    _render: function(src, dst) {
+      this.luminanceNode.render(src, this.bloomPath0);
+      this.gaussianNode.render(this.bloomPath0, this.bloomPath1);
+      this.mixNode.render(src, this.bloomPath1, dst);
+    },
+
+    _accessor: {
+      minBright: {
+        get: function() {
+          return this.luminanceNode.uniformValues["minBright"];
+        },
+        set: function(v) {
+          this.luminanceNode.uniformValues["minBright"] = v;
+        },
+      },
+    },
+
+  });
+
+  phina.define("phina.glfilter.LuminanceFilter", {
+    superClass: "phina.glfilter.ShaderNode",
+
+    init: function() {
+      this.superInit();
+    },
+
+    getFragmentShaderSource: function() {
+      return [
+        "precision mediump float;",
+
+        "uniform sampler2D texture;",
+        "uniform float minBright;",
+
+        "varying vec2 vUv;",
+
+        "void main(void){",
+        "  vec4 texel = texture2D(texture, vUv);",
+        "  vec3 col = max(vec3(0.0), (texel - minBright).rgb);",
+        "  gl_FragColor = vec4(col, texel.a);",
+        "}",
+      ].join("\n");
+    },
+    getFragmentShaderUniforms: function() {
+      return ["texture", "minBright"];
+    },
+
+  });
+
+});
+phina.namespace(function() {
+
   phina.define("phina.glfilter.CopyNode", {
     superClass: "phina.glfilter.ShaderNode",
 
@@ -244,31 +321,83 @@ phina.namespace(function() {
       node.layer = this.layer;
     },
 
-    render: function(src, dst) {
+    _render: function(src, dst) {
       var nodes = this.nodes.filter(function(n) {
         return n.enabled;
       });
 
       if (nodes.length === 1) {
-        nodes.first.flare("prerender");
         nodes.first.render(src, dst);
-        nodes.first.flare("postrender");
       } else if (nodes.length > 0) {
         nodes.first.render(src, this.framebuffer0);
         for (var i = 1; i < nodes.length - 1; i++) {
-          nodes[i].flare("prerender");
           nodes[i].render(this.framebuffer0, this.framebuffer1);
-          nodes[i].flare("postrender");
           var t = this.framebuffer0;
           this.framebuffer0 = this.framebuffer1;
           this.framebuffer1 = t;
         }
-        nodes.last.flare("prerender");
         nodes.last.render(this.framebuffer0, dst);
-        nodes.last.flare("postrender");
       }
     },
 
+  });
+
+});
+phina.namespace(function() {
+
+  phina.define("phina.glfilter.MixNode", {
+    superClass: "phina.glfilter.ShaderNode",
+
+    init: function(weight0, weight1) {
+      this.superInit();
+      this.uniformValues["weight0"] = weight0;
+      this.uniformValues["weight1"] = weight1;
+    },
+
+    render: function(src0, src1, dst) {
+      var gl = this.layer.gl;
+
+      dst.bind();
+      gl.clear(gl.COLOR_BUFFER_BIT);
+
+      this.screen.uniforms["texture0"].setValue(0).setTexture(src0.texture);
+      this.screen.uniforms["texture1"].setValue(1).setTexture(src1.texture);
+      this.uniformValues
+        .forIn(function(key, value) {
+          if (key === "texture0" || key === "texture1") return;
+          this.screen.uniforms[key].setValue(value);
+        }.bind(this));
+      this.screen.draw();
+
+      gl.flush();
+    },
+
+    getFragmentShaderSource: function() {
+      return [
+        "precision mediump float;",
+
+        "uniform sampler2D texture0;",
+        "uniform sampler2D texture1;",
+        "uniform float weight0;",
+        "uniform float weight1;",
+
+        "varying vec2 vUv;",
+
+        "void main(void) {",
+        "  vec4 col0 = texture2D(texture0, vUv);",
+        "  vec4 col1 = texture2D(texture1, vUv);",
+
+        "  vec3 srcColor = col1.rgb * col1.a;",
+        "  vec3 dstColor = col0.rgb * 1.0;",
+        "  float srcAlpha = col1.a * 1.0;",
+        "  float dstAlpha = col0.a * 1.0;",
+        "  gl_FragColor = vec4(srcColor + dstColor, srcAlpha + dstAlpha);",
+        "}",
+      ].join("\n");
+    },
+    getFragmentShaderUniforms: function() {
+      return ["texture0", "texture1", "weight0", "weight1"];
+    },
   });
 
 });
@@ -384,7 +513,13 @@ phina.namespace(function() {
      * @param src {{texture:phigl.Texture}}
      * @param dst {phina.glfilter.Node}
      */
-    render: function(src, dst) {},
+    render: function(src, dst) {
+      this.flare("prerender");
+      this._render(src, dst);
+      this.flare("postrender");
+    },
+
+    _render: function(src, dst) {},
 
     addTo: function(layer) {
       layer.addNode(this);
@@ -510,7 +645,7 @@ phina.namespace(function() {
       return this;
     },
 
-    render: function(src, dst) {
+    _render: function(src, dst) {
       var gl = this.layer.gl;
 
       dst.bind();
@@ -611,7 +746,7 @@ phina.namespace(function() {
       this.superInit();
     },
 
-    render: function(src /*, dst*/ ) {
+    _render: function(src /*, dst*/ ) {
       var gl = this.layer.gl;
 
       phigl.Framebuffer.unbind(gl);

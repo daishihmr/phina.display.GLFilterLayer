@@ -40,7 +40,7 @@ phina.namespace(function() {
       return this;
     },
 
-    render: function(src, dst) {
+    _render: function(src, dst) {
       var gl = this.layer.gl;
 
       dst.bind();
@@ -141,7 +141,7 @@ phina.namespace(function() {
       this.superInit();
     },
 
-    render: function(src /*, dst*/ ) {
+    _render: function(src /*, dst*/ ) {
       var gl = this.layer.gl;
 
       phigl.Framebuffer.unbind(gl);

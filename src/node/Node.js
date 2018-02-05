@@ -34,7 +34,13 @@ phina.namespace(function() {
      * @param src {{texture:phigl.Texture}}
      * @param dst {phina.glfilter.Node}
      */
-    render: function(src, dst) {},
+    render: function(src, dst) {
+      this.flare("prerender");
+      this._render(src, dst);
+      this.flare("postrender");
+    },
+
+    _render: function(src, dst) {},
 
     addTo: function(layer) {
       layer.addNode(this);

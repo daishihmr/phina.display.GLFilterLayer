@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta name="viewport" content="width=device-width,height=device-height,user-scalable=no,initial-scale=1,maximum-scale=1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta charset="UTF-8">
+</head>
+
+<body>
+  <canvas id="app"></canvas>
+  <script src="https://rawgit.com/phinajs/phina.js/develop/build/phina.js"></script>
+  <!-- <script src="https://rawgit.com/daishihmr/phigl.js/develop/build/phigl.js"></script> -->
+  <script src="/phigl.js/build/phigl.js"></script>
+  <script src="../build/phina.glfilter.js"></script>
+  <script>
+  phina.globalize();
+
+  phina.main(() => {
+    const app = GameApp({
+      domElement: document.querySelector("#app"),
+      startLabel: "main",
+      width: 1500,
+      height: 850,
+      // fit: false,
+      assets: {
+        image: {
+          "bg": "bg.jpg",
+          "cureyell": "cureyell.png",
+        },
+      },
+    }).run();
+
+    app.enableStats();
+  });
+
+  phina.define("MainScene", {
+    superClass: "DisplayScene",
+
+    init: function() {
+      this.superInit({
+        width: 1500,
+        height: 850,
+      });
+
+      const layerAll = GLFilterLayer({
+        width: 1500,
+        height: 850,
+        originX: 0,
+        originY: 0,
+        x: 0,
+        y: 0,
+      });
+      const layerFg = GLFilterLayer({
+        width: 1500,
+        height: 850,
+        originX: 0,
+        originY: 0,
+        x: 0,
+        y: 0,
+      });
+
+      const bg = Sprite("bg")
+        .setPosition(this.gridX.center(), this.gridY.center())
+        .addChildTo(layerAll);
+
+      const cureyell = Sprite("cureyell")
+        .setPosition(this.gridX.center(), this.gridY.center())
+        .addChildTo(layerFg);
+
+      layerFg.addChildTo(layerAll);
+      layerAll.addChildTo(this);
+
+      const bloomNode = BloomNode().addTo(layerAll);
+
+      const zb = ZoomBlurNode().addTo(layerFg);
+      zb.uniformValues["x"] = 0.5;
+      zb.uniformValues["y"] = 0.12;
+
+      this.on("enterframe", (e) => {
+        const t = e.app.frame;
+        bloomNode.minBright = 1.0 - Math.abs(Math.sin(t * 0.02));
+      zb.uniformValues["strength"] = Math.abs(Math.sin(t * 0.02)) * 5;
+      })
+    },
+  });
+  </script>
+</body>
+
+</html>
