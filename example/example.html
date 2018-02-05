@@ -1,17 +1,18 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta name="viewport" content="width=device-width,height=device-height,user-scalable=no,initial-scale=1,maximum-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta charset="UTF-8">
 </head>
+
 <body>
-
   <canvas id="app"></canvas>
-
   <script src="https://rawgit.com/phinajs/phina.js/develop/build/phina.js"></script>
-  <script src="https://rawgit.com/daishihmr/phigl.js/develop/build/phigl.js"></script>
+  <!-- <script src="https://rawgit.com/daishihmr/phigl.js/develop/build/phigl.js"></script> -->
+  <script src="/phigl.js/build/phigl.js"></script>
   <script src="../build/phina.glfilter.js"></script>
   <script>
   phina.globalize();
@@ -69,32 +70,32 @@
         .setPosition(this.gridX.span(16), this.gridY.center())
         .addChildTo(glFilterLayer1);
 
-      const filter0 = MonotoneNode();
-      glFilterLayer0.addFilterNode(filter0);
-      filter0.enabled = false;
+      const gaussianNode = MultiGaussianNode().addTo(glFilterLayer0);
+      this.on("enterframe", (e) => {
+        gaussianNode.unit = Math.abs(Math.sin(e.app.frame * 0.02) * 3);
+      });
 
-      const filter1 = ZoomBlurNode();
-      filter1.uniformValues["x"] = 0.5;
-      filter1.uniformValues["y"] = 0.5;
-      glFilterLayer1.addFilterNode(filter1);
+      // const filter1 = ZoomBlurNode();
+      // filter1.uniformValues["x"] = 0.5;
+      // filter1.uniformValues["y"] = 0.5;
+      // filter1.addTo(glFilterLayer1);
 
-      logo.tweener
-        .to({
-          x: this.gridX.span(4),
-        }, 1000, "easeInOutQuad")
-        .call(() => filter0.enabled = !filter0.enabled)
-        .call(() => filter1.enabled = !filter1.enabled)
-        .to({
-          x: this.gridX.span(12),
-        }, 1000, "easeInOutQuad")
-        .call(() => filter0.enabled = !filter0.enabled)
-        .call(() => filter1.enabled = !filter1.enabled)
-        .setLoop(true);
+      // logo.tweener
+      //   .to({
+      //     x: this.gridX.span(4),
+      //   }, 1000, "easeInOutQuad")
+      //   // .call(() => filter0.enabled = !filter0.enabled)
+      //   // .call(() => filter1.enabled = !filter1.enabled)
+      //   .to({
+      //     x: this.gridX.span(12),
+      //   }, 1000, "easeInOutQuad")
+      //   // .call(() => filter0.enabled = !filter0.enabled)
+      //   // .call(() => filter1.enabled = !filter1.enabled)
+      //   .setLoop(true);
 
     },
   });
-
   </script>
-
 </body>
+
 </html>

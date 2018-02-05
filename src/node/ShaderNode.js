@@ -15,22 +15,18 @@ phina.namespace(function() {
     0, 0, 0, 1, //
   ]);
 
-  phina.define("phina.glfilter.GLFilterNode", {
+  phina.define("phina.glfilter.ShaderNode", {
+    superClass: "phina.glfilter.Node",
 
-    gl: null,
-    enabled: true,
     uniformValues: null,
 
     init: function() {
+      this.superInit();
       this.uniformValues = {};
-      this.$watch("gl", function(value, oldValue) {
-        if (!oldValue && value) {
-          this.setup(value);
-        }
-      });
     },
 
-    setup: function(gl) {
+    _setup: function() {
+      var gl = this.layer.gl;
       this.screen = phigl.Drawable(gl)
         .setProgram(this._createProgram(gl))
         .setGeometry(phigl.PlaneXY({
@@ -40,15 +36,17 @@ phina.namespace(function() {
         }))
         .declareUniforms([].concat(this.getVertexShaderUniforms(), this.getFragmentShaderUniforms()));
       this.screen.uniforms["mvpMatrix"].setValue(mvpMatrix);
+
+      return this;
     },
 
     render: function(src, dst) {
-      var gl = this.gl;
+      var gl = this.layer.gl;
 
       dst.bind();
       gl.clear(gl.COLOR_BUFFER_BIT);
 
-      this.screen.uniforms["texture"].setValue(0).setTexture(src);
+      this.screen.uniforms["texture"].setValue(0).setTexture(src.texture);
       this.uniformValues
         .forIn(function(key, value) {
           if (key === "texture") return;
@@ -57,6 +55,8 @@ phina.namespace(function() {
       this.screen.draw();
 
       gl.flush();
+
+      return this;
     },
 
     _createProgram: function(gl) {
@@ -110,13 +110,14 @@ phina.namespace(function() {
   });
 
   phina.define("phina.glfilter.StartNode", {
-    superClass: "phina.glfilter.GLFilterNode",
+    superClass: "phina.glfilter.ShaderNode",
 
     init: function() {
       this.superInit();
     },
 
     getFragmentShaderSource: function() {
+      // filp Y axis
       return [
         "precision mediump float;",
 
@@ -134,19 +135,19 @@ phina.namespace(function() {
   });
 
   phina.define("phina.glfilter.EndNode", {
-    superClass: "phina.glfilter.GLFilterNode",
+    superClass: "phina.glfilter.ShaderNode",
 
     init: function() {
       this.superInit();
     },
 
     render: function(src /*, dst*/ ) {
-      var gl = this.gl;
+      var gl = this.layer.gl;
 
       phigl.Framebuffer.unbind(gl);
       gl.clear(gl.COLOR_BUFFER_BIT);
 
-      this.screen.uniforms["texture"].setValue(0).setTexture(src);
+      this.screen.uniforms["texture"].setValue(0).setTexture(src.texture);
       this.screen.draw();
 
       gl.flush();

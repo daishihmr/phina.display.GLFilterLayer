@@ -1,7 +1,7 @@
 phina.namespace(function() {
 
   phina.define("phina.glfilter.ZoomBlurNode", {
-    superClass: "phina.glfilter.GLFilterNode",
+    superClass: "phina.glfilter.ShaderNode",
 
     init: function() {
       this.superInit();

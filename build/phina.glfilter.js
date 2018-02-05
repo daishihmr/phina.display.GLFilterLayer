@@ -3,12 +3,27 @@ phina.namespace(function() {
   phina.define("phina.glfilter.GLFilterLayer", {
     superClass: "phina.display.Layer",
 
-    _filterNodes: null,
+    gl: null,
+
+    canvas: null,
+    renderer: null,
+    domElement: null,
+
+    sizeInfo: null,
+    domElementGL: null,
+
+    resizedCanvas: null,
+    texture: null,
+
+    framebuffer0: null,
+    framebuffer1: null,
+
+    startNode: null,
+    nodes: null,
+    endNode: null,
 
     init: function(options) {
       this.superInit(options);
-
-      this._filterNodes = [];
 
       var width = options.width;
       var height = options.height;
@@ -17,7 +32,6 @@ phina.namespace(function() {
       this.canvas = phina.graphics.Canvas();
       this.canvas.width = width;
       this.canvas.height = height;
-      this.aspectRate = width / height;
       this.renderer = phina.display.CanvasRenderer(this.canvas);
       this.domElement = this.canvas.domElement;
 
@@ -35,20 +49,21 @@ phina.namespace(function() {
 
       this.resizedCanvas = phina.graphics.Canvas();
       this.resizedCanvas.setSize(this.sizeInfo.width, this.sizeInfo.height);
-      this.screenTexture = phigl.Texture(gl);
+      this.texture = phigl.Texture(gl);
 
       this.framebuffer0 = phigl.Framebuffer(gl, this.sizeInfo.width, this.sizeInfo.height);
       this.framebuffer1 = phigl.Framebuffer(gl, this.sizeInfo.width, this.sizeInfo.height);
 
       this.startNode = phina.glfilter.StartNode();
-      this.startNode.gl = this.gl;
+      this.startNode.layer = this;
+      this.nodes = [];
       this.endNode = phina.glfilter.EndNode();
-      this.endNode.gl = this.gl;
+      this.endNode.layer = this;
     },
 
-    addFilterNode: function(filterNode) {
-      filterNode.gl = this.gl;
-      this._filterNodes.push(filterNode);
+    addNode: function(node) {
+      node.layer = this;
+      this.nodes.push(node);
       return this;
     },
 
@@ -61,25 +76,32 @@ phina.namespace(function() {
         // dst
         sizeInfo.srcX, sizeInfo.srcY, sizeInfo.srcWidth, sizeInfo.srcHeight
       );
-      this.screenTexture.setImage(this.resizedCanvas);
+      this.texture.setImage(this.resizedCanvas);
 
-      this.startNode.render(this.screenTexture, this.framebuffer1);
+      this.startNode.flare("prerender");
+      this.startNode.render(this, this.framebuffer1);
+      this.startNode.flare("postrender");
 
       var src = this.framebuffer1;
       var dst = this.framebuffer0;
-      this._filterNodes
+      this.nodes
         .filter(function(filterNode) {
           return filterNode.enabled;
         })
         .forEach(function(filterNode) {
-          filterNode.render(src.texture, dst);
+          filterNode.flare("prerender");
+          filterNode.render(src, dst);
+          filterNode.flare("postrender");
 
-          var temp = src;
+          // swap
+          var t = src;
           src = dst;
-          dst = temp;
+          dst = t;
         });
 
-      this.endNode.render(src.texture);
+      this.endNode.flare("prerender");
+      this.endNode.render(src);
+      this.endNode.flare("postrender");
     },
 
     draw: function(canvas) {
@@ -107,6 +129,347 @@ phina.namespace(function() {
 });
 phina.namespace(function() {
 
+  phina.define("phina.glfilter.CopyNode", {
+    superClass: "phina.glfilter.ShaderNode",
+
+    init: function() {
+      this.superInit();
+    },
+
+  });
+
+});
+phina.namespace(function() {
+
+  phina.define("phina.glfilter.GaussianNode", {
+    superClass: "phina.glfilter.ShaderNode",
+
+    init: function() {
+      this.superInit();
+    },
+
+    getFragmentShaderSource: function() {
+      return [
+        "precision mediump float;",
+
+        "uniform sampler2D texture;",
+        "uniform vec2 resolution;",
+        "uniform vec2 direction;",
+
+        "varying vec2 vUv;",
+
+        // "vec4 blur13(sampler2D image, vec2 uv, vec2 resolution, vec2 direction) {",
+        // "  vec4 color = vec4(0.0);",
+        // "  vec2 off1 = vec2(1.411764705882353) * direction;",
+        // "  vec2 off2 = vec2(3.2941176470588234) * direction;",
+        // "  vec2 off3 = vec2(5.176470588235294) * direction;",
+        // "  color += texture2D(image, uv) * 0.1964825501511404;",
+        // "  color += texture2D(image, uv + (off1 / resolution)) * 0.2969069646728344;",
+        // "  color += texture2D(image, uv - (off1 / resolution)) * 0.2969069646728344;",
+        // "  color += texture2D(image, uv + (off2 / resolution)) * 0.09447039785044732;",
+        // "  color += texture2D(image, uv - (off2 / resolution)) * 0.09447039785044732;",
+        // "  color += texture2D(image, uv + (off3 / resolution)) * 0.010381362401148057;",
+        // "  color += texture2D(image, uv - (off3 / resolution)) * 0.010381362401148057;",
+        // "  return color;",
+        // "}",
+
+        // "vec4 blur9(sampler2D image, vec2 uv, vec2 resolution, vec2 direction) {",
+        // "  vec4 color = vec4(0.0);",
+        // "  vec2 off1 = vec2(1.3846153846) * direction;",
+        // "  vec2 off2 = vec2(3.2307692308) * direction;",
+        // "  color += texture2D(image, uv) * 0.2270270270;",
+        // "  color += texture2D(image, uv + (off1 / resolution)) * 0.3162162162;",
+        // "  color += texture2D(image, uv - (off1 / resolution)) * 0.3162162162;",
+        // "  color += texture2D(image, uv + (off2 / resolution)) * 0.0702702703;",
+        // "  color += texture2D(image, uv - (off2 / resolution)) * 0.0702702703;",
+        // "  return color;",
+        // "}",
+
+        "vec4 blur5(sampler2D image, vec2 uv, vec2 resolution, vec2 direction) {",
+        "  vec4 color = vec4(0.0);",
+        "  vec2 off1 = vec2(1.3333333333333333) * direction;",
+        "  color += texture2D(image, uv) * 0.29411764705882354;",
+        "  color += texture2D(image, uv + (off1 / resolution)) * 0.35294117647058826;",
+        "  color += texture2D(image, uv - (off1 / resolution)) * 0.35294117647058826;",
+        "  return color; ",
+        "}",
+
+        "void main(void) {",
+        "  vec4 col = blur5(texture, vUv, resolution, direction);",
+        "  gl_FragColor = col;",
+        "}",
+
+      ].join("\n");
+    },
+    getFragmentShaderUniforms: function() {
+      return [
+        "texture",
+        "resolution", // 画面の解像度
+        "direction", // ブレ方向
+      ];
+    },
+
+  });
+
+});
+phina.namespace(function() {
+
+  phina.define("phina.glfilter.ListNode", {
+    superClass: "phina.glfilter.Node",
+
+    nodes: null,
+
+    init: function() {
+      this.superInit();
+      this.nodes = [];
+    },
+
+    _setup: function() {
+      var gl = this.layer.gl;
+      var sizeInfo = this.layer.sizeInfo;
+
+      this.framebuffer0 = phigl.Framebuffer(gl, sizeInfo.width, sizeInfo.height);
+      this.framebuffer1 = phigl.Framebuffer(gl, sizeInfo.width, sizeInfo.height);
+    },
+
+    isEnabled: function() {
+      var count = this.nodes.filter(function(n) {
+        return n.enabled;
+      }).length;
+      return this._enabled && count > 0;
+    },
+
+    addNode: function(node) {
+      this.nodes.push(node);
+      node.layer = this.layer;
+    },
+
+    render: function(src, dst) {
+      var nodes = this.nodes.filter(function(n) {
+        return n.enabled;
+      });
+
+      if (nodes.length === 1) {
+        nodes.first.flare("prerender");
+        nodes.first.render(src, dst);
+        nodes.first.flare("postrender");
+      } else if (nodes.length > 0) {
+        nodes.first.render(src, this.framebuffer0);
+        for (var i = 1; i < nodes.length - 1; i++) {
+          nodes[i].flare("prerender");
+          nodes[i].render(this.framebuffer0, this.framebuffer1);
+          nodes[i].flare("postrender");
+          var t = this.framebuffer0;
+          this.framebuffer0 = this.framebuffer1;
+          this.framebuffer1 = t;
+        }
+        nodes.last.flare("prerender");
+        nodes.last.render(this.framebuffer0, dst);
+        nodes.last.flare("postrender");
+      }
+    },
+
+  });
+
+});
+phina.namespace(function() {
+
+  phina.define("phina.glfilter.MonotoneNode", {
+    superClass: "phina.glfilter.ShaderNode",
+
+    init: function() {
+      this.superInit();
+    },
+
+    getFragmentShaderSource: function() {
+      return [
+        "precision mediump float;",
+
+        "uniform sampler2D texture;",
+
+        "varying vec2 vUv;",
+
+        "void main(void) {",
+        "  vec4 col = texture2D(texture, vUv);",
+        "  if (col.a == 0.0) discard;",
+        "  float c = col.r + col.g + col.b;",
+        "  gl_FragColor = vec4(vec3(c / 3.0), col.a);",
+        "}",
+      ].join("\n");
+    },
+  });
+
+});
+phina.namespace(function() {
+
+  phina.define("phina.glfilter.MultiGaussianNode", {
+    superClass: "phina.glfilter.ListNode",
+
+    init: function(unit, count) {
+      this.superInit();
+
+      this.unit = unit || 0;
+      this.count = count || 4;
+
+      this.on("prerender", function() {
+        this.setUnit();
+      });
+    },
+
+    setUnit: function() {
+      this.nodes.forEach(function(n, i) {
+        if (i % 2 === 0) {
+          n.uniformValues["direction"] = [i * this.unit, 0];
+        } else {
+          n.uniformValues["direction"] = [0, i * this.unit];
+        }
+      }.bind(this));
+    },
+
+    _setup: function() {
+      this.superMethod("_setup");
+
+      var sizeInfo = this.layer.sizeInfo;
+      for (var i = 0; i < this.count; i++) {
+        const gfH = GaussianNode();
+        gfH.enabled = true;
+        gfH.uniformValues["resolution"] = [sizeInfo.width, sizeInfo.height];
+        this.addNode(gfH);
+
+        const gfV = GaussianNode();
+        gfV.enabled = true;
+        gfV.uniformValues["resolution"] = [sizeInfo.width, sizeInfo.height];
+        this.addNode(gfV);
+      }
+
+      this.setUnit();
+    },
+
+  });
+
+});
+phina.namespace(function() {
+
+  phina.define("phina.glfilter.Node", {
+    superClass: "phina.util.EventDispatcher",
+
+    /** @type {GLFilterLayer} */
+    _layer: null,
+
+    _enabled: true,
+
+    init: function() {
+      this.superInit();
+    },
+
+    isEnabled: function() {
+      return this._enabled;
+    },
+    setEnabled: function(v) {
+      this._enabled = v;
+    },
+
+    setLayer: function(layer) {
+      this._layer = layer;
+      this._setup();
+
+      return this;
+    },
+
+    _setup: function() {
+      return this;
+    },
+
+    /**
+     * @param src {{texture:phigl.Texture}}
+     * @param dst {phina.glfilter.Node}
+     */
+    render: function(src, dst) {},
+
+    addTo: function(layer) {
+      layer.addNode(this);
+      return this;
+    },
+
+    _accessor: {
+      enabled: {
+        get: function() {
+          return this.isEnabled();
+        },
+        set: function(v) {
+          this.setEnabled(v);
+        },
+      },
+      layer: {
+        get: function() {
+          return this._layer;
+        },
+        set: function(v) {
+          this.setLayer(v);
+        },
+      },
+    }
+
+  });
+
+});
+phina.namespace(function() {
+
+  phina.define("phina.glfilter.ReverseNode", {
+    superClass: "phina.glfilter.ShaderNode",
+
+    init: function() {
+      this.superInit();
+    },
+
+    getFragmentShaderSource: function() {
+      return [
+        "precision mediump float;",
+
+        "uniform sampler2D texture;",
+
+        "varying vec2 vUv;",
+
+        "void main(void) {",
+        "  vec4 col = texture2D(texture, vUv);",
+        "  if (col.a == 0.0) discard;",
+        "  gl_FragColor = vec4(1.0 - col.rgb, col.a);",
+        "}",
+      ].join("\n");
+    },
+  });
+
+});
+phina.namespace(function() {
+
+  phina.define("phina.glfilter.SepiaNode", {
+    superClass: "phina.glfilter.ShaderNode",
+
+    init: function() {
+      this.superInit();
+    },
+
+    getFragmentShaderSource: function() {
+      return [
+        "precision mediump float;",
+
+        "uniform sampler2D texture;",
+
+        "varying vec2 vUv;",
+
+        "void main(void) {",
+        "  vec4 tex = texture2D(texture, vUv);",
+        "  vec3 c = vec3((tex.r + tex.g + tex.b) / 3.0);",
+        "  gl_FragColor = vec4(c.r * 1.2, c.g * 1.05, c.b * 0.9, tex.a);",
+        "}",
+      ].join("\n");
+    },
+  });
+
+});
+
+phina.namespace(function() {
+
   // var projectionMatrix = mat4.create();
   // var viewMatrix = mat4.create();
   // var modelMatrix = mat4.create();
@@ -115,24 +478,25 @@ phina.namespace(function() {
   // mat4.lookAt(viewMatrix, [0, 0, 1], [0, 0, 0], [0, 1, 0]);
   // mat4.mul(mvpMatrix, projectionMatrix, viewMatrix);
   // mat4.mul(mvpMatrix, mvpMatrix, modelMatrix);
-  var mvpMatrix = new Float32Array([2, 0, 0, 0, 0, 2, 0, 0, 0, 0, -10, 0, 0, 0, 0, 1]);
+  var mvpMatrix = new Float32Array([ //
+    2, 0, 0, 0, //
+    0, 2, 0, 0, //
+    0, 0, -10, 0, //
+    0, 0, 0, 1, //
+  ]);
 
-  phina.define("phina.glfilter.GLFilterNode", {
+  phina.define("phina.glfilter.ShaderNode", {
+    superClass: "phina.glfilter.Node",
 
-    gl: null,
-    enabled: true,
     uniformValues: null,
 
     init: function() {
+      this.superInit();
       this.uniformValues = {};
-      this.$watch("gl", function(value, oldValue) {
-        if (!oldValue && value) {
-          this.setup(value);
-        }
-      });
     },
 
-    setup: function(gl) {
+    _setup: function() {
+      var gl = this.layer.gl;
       this.screen = phigl.Drawable(gl)
         .setProgram(this._createProgram(gl))
         .setGeometry(phigl.PlaneXY({
@@ -142,15 +506,17 @@ phina.namespace(function() {
         }))
         .declareUniforms([].concat(this.getVertexShaderUniforms(), this.getFragmentShaderUniforms()));
       this.screen.uniforms["mvpMatrix"].setValue(mvpMatrix);
+
+      return this;
     },
 
     render: function(src, dst) {
-      var gl = this.gl;
+      var gl = this.layer.gl;
 
       dst.bind();
       gl.clear(gl.COLOR_BUFFER_BIT);
 
-      this.screen.uniforms["texture"].setValue(0).setTexture(src);
+      this.screen.uniforms["texture"].setValue(0).setTexture(src.texture);
       this.uniformValues
         .forIn(function(key, value) {
           if (key === "texture") return;
@@ -159,6 +525,8 @@ phina.namespace(function() {
       this.screen.draw();
 
       gl.flush();
+
+      return this;
     },
 
     _createProgram: function(gl) {
@@ -212,13 +580,14 @@ phina.namespace(function() {
   });
 
   phina.define("phina.glfilter.StartNode", {
-    superClass: "phina.glfilter.GLFilterNode",
+    superClass: "phina.glfilter.ShaderNode",
 
     init: function() {
       this.superInit();
     },
 
     getFragmentShaderSource: function() {
+      // filp Y axis
       return [
         "precision mediump float;",
 
@@ -236,19 +605,19 @@ phina.namespace(function() {
   });
 
   phina.define("phina.glfilter.EndNode", {
-    superClass: "phina.glfilter.GLFilterNode",
+    superClass: "phina.glfilter.ShaderNode",
 
     init: function() {
       this.superInit();
     },
 
-    render: function(src/*, dst*/) {
-      var gl = this.gl;
+    render: function(src /*, dst*/ ) {
+      var gl = this.layer.gl;
 
       phigl.Framebuffer.unbind(gl);
       gl.clear(gl.COLOR_BUFFER_BIT);
 
-      this.screen.uniforms["texture"].setValue(0).setTexture(src);
+      this.screen.uniforms["texture"].setValue(0).setTexture(src.texture);
       this.screen.draw();
 
       gl.flush();
@@ -258,91 +627,8 @@ phina.namespace(function() {
 });
 phina.namespace(function() {
 
-  phina.define("phina.glfilter.MonotoneNode", {
-    superClass: "phina.glfilter.GLFilterNode",
-
-    init: function() {
-      this.superInit();
-    },
-
-    getFragmentShaderSource: function() {
-      return [
-        "precision mediump float;",
-
-        "uniform sampler2D texture;",
-
-        "varying vec2 vUv;",
-
-        "void main(void) {",
-        "  vec4 col = texture2D(texture, vUv);",
-        "  if (col.a == 0.0) discard;",
-        "  float c = col.r + col.g + col.b;",
-        "  gl_FragColor = vec4(vec3(c / 3.0), col.a);",
-        "}",
-      ].join("\n");
-    },
-  });
-
-});
-phina.namespace(function() {
-
-  phina.define("phina.glfilter.ReverseNode", {
-    superClass: "phina.glfilter.GLFilterNode",
-
-    init: function() {
-      this.superInit();
-    },
-
-    getFragmentShaderSource: function() {
-      return [
-        "precision mediump float;",
-
-        "uniform sampler2D texture;",
-
-        "varying vec2 vUv;",
-
-        "void main(void) {",
-        "  vec4 col = texture2D(texture, vUv);",
-        "  if (col.a == 0.0) discard;",
-        "  gl_FragColor = vec4(1.0 - col.rgb, col.a);",
-        "}",
-      ].join("\n");
-    },
-  });
-
-});
-phina.namespace(function() {
-
-  phina.define("phina.glfilter.SepiaNode", {
-    superClass: "phina.glfilter.GLFilterNode",
-
-    init: function() {
-      this.superInit();
-    },
-
-    getFragmentShaderSource: function() {
-      return [
-        "precision mediump float;",
-
-        "uniform sampler2D texture;",
-
-        "varying vec2 vUv;",
-
-        "void main(void) {",
-        "  vec4 tex = texture2D(texture, vUv);",
-        "  vec3 c = vec3((tex.r + tex.g + tex.b) / 3.0);",
-        "  gl_FragColor = vec4(c.r * 1.2, c.g * 1.05, c.b * 0.9, tex.a);",
-        "}",
-      ].join("\n");
-    },
-  });
-
-});
-
-phina.namespace(function() {
-
   phina.define("phina.glfilter.ZoomBlurNode", {
-    superClass: "phina.glfilter.GLFilterNode",
+    superClass: "phina.glfilter.ShaderNode",
 
     init: function() {
       this.superInit();

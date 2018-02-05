@@ -1,7 +1,7 @@
 phina.namespace(function() {
 
-  phina.define("phina.glfilter.ReverseNode", {
-    superClass: "phina.glfilter.GLFilterNode",
+  phina.define("phina.glfilter.SepiaNode", {
+    superClass: "phina.glfilter.ShaderNode",
 
     init: function() {
       this.superInit();
@@ -16,9 +16,9 @@ phina.namespace(function() {
         "varying vec2 vUv;",
 
         "void main(void) {",
-        "  vec4 col = texture2D(texture, vUv);",
-        "  if (col.a == 0.0) discard;",
-        "  gl_FragColor = vec4(1.0 - col.rgb, col.a);",
+        "  vec4 tex = texture2D(texture, vUv);",
+        "  vec3 c = vec3((tex.r + tex.g + tex.b) / 3.0);",
+        "  gl_FragColor = vec4(c.r * 1.2, c.g * 1.05, c.b * 0.9, tex.a);",
         "}",
       ].join("\n");
     },

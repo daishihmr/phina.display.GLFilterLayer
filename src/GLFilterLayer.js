@@ -3,12 +3,27 @@ phina.namespace(function() {
   phina.define("phina.glfilter.GLFilterLayer", {
     superClass: "phina.display.Layer",
 
-    _filterNodes: null,
+    gl: null,
+
+    canvas: null,
+    renderer: null,
+    domElement: null,
+
+    sizeInfo: null,
+    domElementGL: null,
+
+    resizedCanvas: null,
+    texture: null,
+
+    framebuffer0: null,
+    framebuffer1: null,
+
+    startNode: null,
+    nodes: null,
+    endNode: null,
 
     init: function(options) {
       this.superInit(options);
-
-      this._filterNodes = [];
 
       var width = options.width;
       var height = options.height;
@@ -17,7 +32,6 @@ phina.namespace(function() {
       this.canvas = phina.graphics.Canvas();
       this.canvas.width = width;
       this.canvas.height = height;
-      this.aspectRate = width / height;
       this.renderer = phina.display.CanvasRenderer(this.canvas);
       this.domElement = this.canvas.domElement;
 
@@ -35,20 +49,21 @@ phina.namespace(function() {
 
       this.resizedCanvas = phina.graphics.Canvas();
       this.resizedCanvas.setSize(this.sizeInfo.width, this.sizeInfo.height);
-      this.screenTexture = phigl.Texture(gl);
+      this.texture = phigl.Texture(gl);
 
       this.framebuffer0 = phigl.Framebuffer(gl, this.sizeInfo.width, this.sizeInfo.height);
       this.framebuffer1 = phigl.Framebuffer(gl, this.sizeInfo.width, this.sizeInfo.height);
 
       this.startNode = phina.glfilter.StartNode();
-      this.startNode.gl = this.gl;
+      this.startNode.layer = this;
+      this.nodes = [];
       this.endNode = phina.glfilter.EndNode();
-      this.endNode.gl = this.gl;
+      this.endNode.layer = this;
     },
 
-    addFilterNode: function(filterNode) {
-      filterNode.gl = this.gl;
-      this._filterNodes.push(filterNode);
+    addNode: function(node) {
+      node.layer = this;
+      this.nodes.push(node);
       return this;
     },
 
@@ -61,25 +76,32 @@ phina.namespace(function() {
         // dst
         sizeInfo.srcX, sizeInfo.srcY, sizeInfo.srcWidth, sizeInfo.srcHeight
       );
-      this.screenTexture.setImage(this.resizedCanvas);
+      this.texture.setImage(this.resizedCanvas);
 
-      this.startNode.render(this.screenTexture, this.framebuffer1);
+      this.startNode.flare("prerender");
+      this.startNode.render(this, this.framebuffer1);
+      this.startNode.flare("postrender");
 
       var src = this.framebuffer1;
       var dst = this.framebuffer0;
-      this._filterNodes
+      this.nodes
         .filter(function(filterNode) {
           return filterNode.enabled;
         })
         .forEach(function(filterNode) {
-          filterNode.render(src.texture, dst);
+          filterNode.flare("prerender");
+          filterNode.render(src, dst);
+          filterNode.flare("postrender");
 
-          var temp = src;
+          // swap
+          var t = src;
           src = dst;
-          dst = temp;
+          dst = t;
         });
 
-      this.endNode.render(src.texture);
+      this.endNode.flare("prerender");
+      this.endNode.render(src);
+      this.endNode.flare("postrender");
     },
 
     draw: function(canvas) {

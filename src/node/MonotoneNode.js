@@ -1,7 +1,7 @@
 phina.namespace(function() {
 
   phina.define("phina.glfilter.MonotoneNode", {
-    superClass: "phina.glfilter.GLFilterNode",
+    superClass: "phina.glfilter.ShaderNode",
 
     init: function() {
       this.superInit();
