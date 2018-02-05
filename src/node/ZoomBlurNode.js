@@ -14,11 +14,11 @@ phina.namespace(function() {
         "uniform sampler2D texture;",
         "uniform float x;",
         "uniform float y;",
+        "uniform float strength;",
 
         "varying vec2 vUv;",
 
         "const float nFrag = 1.0 / 30.0;",
-        "const float strength = 8.0;",
 
         "float rnd(vec3 scale, float seed){",
         "    return fract(sin(dot(gl_FragCoord.stp + seed, scale)) * 43758.5453 + seed);",
@@ -44,7 +44,7 @@ phina.namespace(function() {
       ].join("\n");
     },
     getFragmentShaderUniforms: function() {
-      return ["texture", "x", "y"];
+      return ["texture", "x", "y", "strength"];
     },
 
   });
