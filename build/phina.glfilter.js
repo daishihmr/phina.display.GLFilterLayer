@@ -4,7 +4,6 @@ phina.namespace(function() {
     superClass: "phina.display.Layer",
 
     enableGL: true,
-    quarity: 1,
 
     gl: null,
 
@@ -39,7 +38,7 @@ phina.namespace(function() {
       this.domElement = this.canvas.domElement;
 
       // 3D
-      this.sizeInfo = phigl.ImageUtil.calcSizePowOf2(width * Math.pow(2, quarity), height * Math.pow(2, quarity));
+      this.sizeInfo = phigl.ImageUtil.calcSizePowOf2(width * options.quarity, height * options.quarity);
       this.domElementGL = document.createElement("canvas");
 
       var gl = this.gl = this.domElementGL.getContext("webgl");

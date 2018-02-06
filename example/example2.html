@@ -11,7 +11,7 @@
 <body>
   <canvas id="app"></canvas>
   <script src="https://rawgit.com/phinajs/phina.js/develop/build/phina.js"></script>
-  <script src="https://rawgit.com/daishihmr/phigl.js/develop/build/phigl.js"></script>
+  <script src="../../phigl.js/build/phigl.js"></script>
   <script src="../build/phina.glfilter.js"></script>
   <script>
   phina.globalize();
@@ -20,8 +20,8 @@
     const app = GameApp({
       domElement: document.querySelector("#app"),
       startLabel: "main",
-      width: 1500,
-      height: 850,
+      width: 768,
+      height: 1024,
       // fit: false,
       assets: {
         image: {
@@ -39,48 +39,60 @@
 
     init: function() {
       this.superInit({
-        width: 1500,
-        height: 850,
+        width: 768,
+        height: 1024,
+        backgroundColor: "black",
       });
 
       const layerAll = GLFilterLayer({
-        width: 1500,
-        height: 850,
+        width: 768,
+        height: 1024,
         originX: 0,
         originY: 0,
         x: 0,
         y: 0,
-      });
-      const layerFg = GLFilterLayer({
-        width: 1500,
-        height: 850,
-        originX: 0,
-        originY: 0,
-        x: 0,
-        y: 0,
+        quarity: 1,
       });
 
       const bg = Sprite("bg")
+        .setScale(2)
         .setPosition(this.gridX.center(), this.gridY.center())
         .addChildTo(layerAll);
 
       const cureyell = Sprite("cureyell")
         .setPosition(this.gridX.center(), this.gridY.center())
-        .addChildTo(layerFg);
+        .addChildTo(layerAll);
 
-      layerFg.addChildTo(layerAll);
       layerAll.addChildTo(this);
 
-      const bloomNode = BloomNode().addTo(layerAll);
+      RectangleShape({
+        width: 768,
+        height: 1024,
+        padding: 0,
+        fill: null,
+        stroke: "red",
+        strokeWidth: 5,
+      }).setPosition(0, 0).setOrigin(0, 0).addChildTo(this);
 
-      const zb = ZoomBlurNode().addTo(layerFg);
-      zb.uniformValues["x"] = 0.5;
-      zb.uniformValues["y"] = 0.12;
+      const bloomNode = BloomNode().addTo(layerAll);
+      bloomNode.minBright = 1.0;
+      // Tweener().attachTo(this)
+      //   .clear()
+      //   .wait(1000)
+      //   .call(() => {
+      //     layerAll.enableGL = !layerAll.enableGL;
+      //   })
+      //   .setLoop(true);
+
+      const zb = ZoomBlurNode().addTo(layerAll);
+      zb.x = 0.5;
+      zb.y = 0.12;
+      // zb.strength = 10;
 
       this.on("enterframe", (e) => {
         const t = e.app.frame;
         bloomNode.minBright = 1.0 - Math.abs(Math.sin(t * 0.02));
-        zb.uniformValues["strength"] = Math.abs(Math.sin(t * 0.02)) * 5;
+        // zb.uniformValues["strength"] = Math.abs(Math.sin(t * 0.02)) * 5;
       })
     },
   });
