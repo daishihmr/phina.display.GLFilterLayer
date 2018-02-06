@@ -3,6 +3,9 @@ phina.namespace(function() {
   phina.define("phina.glfilter.GLFilterLayer", {
     superClass: "phina.display.Layer",
 
+    enableGL: true,
+    quarity: 1,
+
     gl: null,
 
     canvas: null,
@@ -36,7 +39,7 @@ phina.namespace(function() {
       this.domElement = this.canvas.domElement;
 
       // 3D
-      this.sizeInfo = phigl.ImageUtil.calcSizePowOf2(width, height);
+      this.sizeInfo = phigl.ImageUtil.calcSizePowOf2(width * Math.pow(2, quarity), height * Math.pow(2, quarity));
       this.domElementGL = document.createElement("canvas");
 
       var gl = this.gl = this.domElementGL.getContext("webgl");
@@ -78,9 +81,7 @@ phina.namespace(function() {
       );
       this.texture.setImage(this.resizedCanvas);
 
-      this.startNode.flare("prerender");
-      this.startNode.render(this, this.framebuffer1);
-      this.startNode.flare("postrender");
+      this.startNode.render(this, this.framebuffer1, sizeInfo);
 
       var src = this.framebuffer1;
       var dst = this.framebuffer0;
@@ -89,9 +90,7 @@ phina.namespace(function() {
           return filterNode.enabled;
         })
         .forEach(function(filterNode) {
-          filterNode.flare("prerender");
-          filterNode.render(src, dst);
-          filterNode.flare("postrender");
+          filterNode.render(src, dst, sizeInfo);
 
           // swap
           var t = src;
@@ -99,9 +98,7 @@ phina.namespace(function() {
           dst = t;
         });
 
-      this.endNode.flare("prerender");
-      this.endNode.render(src);
-      this.endNode.flare("postrender");
+      this.endNode.render(src, sizeInfo);
     },
 
     draw: function(canvas) {
@@ -111,17 +108,27 @@ phina.namespace(function() {
       this.renderer.render(this);
       this._worldMatrix = temp;
 
-      // 3D
-      this.render();
+      if (this.enableGL) {
+        // 3D
+        this.render();
 
-      var domElementGL = this.domElementGL;
-      var sizeInfo = this.sizeInfo;
-      canvas.context.drawImage(domElementGL,
-        // src
-        sizeInfo.srcX, sizeInfo.srcY, sizeInfo.srcWidth, sizeInfo.srcHeight,
-        // dst
-        -this.width * this.originX, -this.height * this.originY, this.width, this.height
-      );
+        var domElementGL = this.domElementGL;
+        var sizeInfo = this.sizeInfo;
+        canvas.context.drawImage(domElementGL,
+          // src
+          sizeInfo.srcX, sizeInfo.srcY, sizeInfo.srcWidth, sizeInfo.srcHeight,
+          // dst
+          -this.width * this.originX, -this.height * this.originY, this.width, this.height
+        );
+      } else {
+        var domElement = this.domElement;
+        canvas.context.drawImage(domElement,
+          // src
+          0, 0, domElement.width, domElement.height,
+          // dst
+          -this.width * this.originX, -this.height * this.originY, this.width, this.height
+        );
+      }
     },
 
   });

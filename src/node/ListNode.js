@@ -30,22 +30,22 @@ phina.namespace(function() {
       node.layer = this.layer;
     },
 
-    _render: function(src, dst) {
+    _render: function(src, dst, sizeInfo) {
       var nodes = this.nodes.filter(function(n) {
         return n.enabled;
       });
 
       if (nodes.length === 1) {
-        nodes.first.render(src, dst);
+        nodes.first.render(src, dst, sizeInfo);
       } else if (nodes.length > 0) {
-        nodes.first.render(src, this.framebuffer0);
+        nodes.first.render(src, this.framebuffer0, sizeInfo);
         for (var i = 1; i < nodes.length - 1; i++) {
-          nodes[i].render(this.framebuffer0, this.framebuffer1);
+          nodes[i].render(this.framebuffer0, this.framebuffer1, sizeInfo);
           var t = this.framebuffer0;
           this.framebuffer0 = this.framebuffer1;
           this.framebuffer1 = t;
         }
-        nodes.last.render(this.framebuffer0, dst);
+        nodes.last.render(this.framebuffer0, dst, sizeInfo);
       }
     },
 

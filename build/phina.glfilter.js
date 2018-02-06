@@ -3,6 +3,9 @@ phina.namespace(function() {
   phina.define("phina.glfilter.GLFilterLayer", {
     superClass: "phina.display.Layer",
 
+    enableGL: true,
+    quarity: 1,
+
     gl: null,
 
     canvas: null,
@@ -36,7 +39,7 @@ phina.namespace(function() {
       this.domElement = this.canvas.domElement;
 
       // 3D
-      this.sizeInfo = phigl.ImageUtil.calcSizePowOf2(width, height);
+      this.sizeInfo = phigl.ImageUtil.calcSizePowOf2(width * Math.pow(2, quarity), height * Math.pow(2, quarity));
       this.domElementGL = document.createElement("canvas");
 
       var gl = this.gl = this.domElementGL.getContext("webgl");
@@ -78,9 +81,7 @@ phina.namespace(function() {
       );
       this.texture.setImage(this.resizedCanvas);
 
-      this.startNode.flare("prerender");
-      this.startNode.render(this, this.framebuffer1);
-      this.startNode.flare("postrender");
+      this.startNode.render(this, this.framebuffer1, sizeInfo);
 
       var src = this.framebuffer1;
       var dst = this.framebuffer0;
@@ -89,9 +90,7 @@ phina.namespace(function() {
           return filterNode.enabled;
         })
         .forEach(function(filterNode) {
-          filterNode.flare("prerender");
-          filterNode.render(src, dst);
-          filterNode.flare("postrender");
+          filterNode.render(src, dst, sizeInfo);
 
           // swap
           var t = src;
@@ -99,9 +98,7 @@ phina.namespace(function() {
           dst = t;
         });
 
-      this.endNode.flare("prerender");
-      this.endNode.render(src);
-      this.endNode.flare("postrender");
+      this.endNode.render(src, sizeInfo);
     },
 
     draw: function(canvas) {
@@ -111,17 +108,27 @@ phina.namespace(function() {
       this.renderer.render(this);
       this._worldMatrix = temp;
 
-      // 3D
-      this.render();
+      if (this.enableGL) {
+        // 3D
+        this.render();
 
-      var domElementGL = this.domElementGL;
-      var sizeInfo = this.sizeInfo;
-      canvas.context.drawImage(domElementGL,
-        // src
-        sizeInfo.srcX, sizeInfo.srcY, sizeInfo.srcWidth, sizeInfo.srcHeight,
-        // dst
-        -this.width * this.originX, -this.height * this.originY, this.width, this.height
-      );
+        var domElementGL = this.domElementGL;
+        var sizeInfo = this.sizeInfo;
+        canvas.context.drawImage(domElementGL,
+          // src
+          sizeInfo.srcX, sizeInfo.srcY, sizeInfo.srcWidth, sizeInfo.srcHeight,
+          // dst
+          -this.width * this.originX, -this.height * this.originY, this.width, this.height
+        );
+      } else {
+        var domElement = this.domElement;
+        canvas.context.drawImage(domElement,
+          // src
+          0, 0, domElement.width, domElement.height,
+          // dst
+          -this.width * this.originX, -this.height * this.originY, this.width, this.height
+        );
+      }
     },
 
   });
@@ -155,10 +162,10 @@ phina.namespace(function() {
       this.bloomPath1 = phigl.Framebuffer(gl, sizeInfo.width, sizeInfo.height);
     },
 
-    _render: function(src, dst) {
-      this.luminanceNode.render(src, this.bloomPath0);
-      this.gaussianNode.render(this.bloomPath0, this.bloomPath1);
-      this.mixNode.render(src, this.bloomPath1, dst);
+    _render: function(src, dst, sizeInfo) {
+      this.luminanceNode.render(src, this.bloomPath0, sizeInfo);
+      this.gaussianNode.render(this.bloomPath0, this.bloomPath1, sizeInfo);
+      this.mixNode.render(src, this.bloomPath1, dst, sizeInfo);
     },
 
     _accessor: {
@@ -223,6 +230,10 @@ phina.namespace(function() {
 
     init: function() {
       this.superInit();
+      this.on("prerender", function(e) {
+        var sizeInfo = e.sizeInfo;
+        this.resolution = [sizeInfo.width, sizeInfo.height];
+      });
     },
 
     getFragmentShaderSource: function() {
@@ -281,9 +292,20 @@ phina.namespace(function() {
     getFragmentShaderUniforms: function() {
       return [
         "texture",
-        "resolution", // 画面の解像度
-        "direction", // ブレ方向
+        "resolution", // 画面の解像度 as vec2
+        "direction", // ブレ方向 as vec2
       ];
+    },
+
+    _accessor: {
+      resolution: {
+        get: function() {
+          return this.uniformValues["resolution"];
+        },
+        set: function(v) {
+          this.uniformValues["resolution"] = v;
+        },
+      },
     },
 
   });
@@ -321,22 +343,22 @@ phina.namespace(function() {
       node.layer = this.layer;
     },
 
-    _render: function(src, dst) {
+    _render: function(src, dst, sizeInfo) {
       var nodes = this.nodes.filter(function(n) {
         return n.enabled;
       });
 
       if (nodes.length === 1) {
-        nodes.first.render(src, dst);
+        nodes.first.render(src, dst, sizeInfo);
       } else if (nodes.length > 0) {
-        nodes.first.render(src, this.framebuffer0);
+        nodes.first.render(src, this.framebuffer0, sizeInfo);
         for (var i = 1; i < nodes.length - 1; i++) {
-          nodes[i].render(this.framebuffer0, this.framebuffer1);
+          nodes[i].render(this.framebuffer0, this.framebuffer1, sizeInfo);
           var t = this.framebuffer0;
           this.framebuffer0 = this.framebuffer1;
           this.framebuffer1 = t;
         }
-        nodes.last.render(this.framebuffer0, dst);
+        nodes.last.render(this.framebuffer0, dst, sizeInfo);
       }
     },
 
@@ -354,7 +376,7 @@ phina.namespace(function() {
       this.uniformValues["weight1"] = weight1;
     },
 
-    render: function(src0, src1, dst) {
+    render: function(src0, src1, dst, sizeInfo) {
       var gl = this.layer.gl;
 
       dst.bind();
@@ -513,13 +535,13 @@ phina.namespace(function() {
      * @param src {{texture:phigl.Texture}}
      * @param dst {phina.glfilter.Node}
      */
-    render: function(src, dst) {
-      this.flare("prerender");
-      this._render(src, dst);
+    render: function(src, dst, sizeInfo) {
+      this.flare("prerender", { sizeInfo: sizeInfo });
+      this._render(src, dst, sizeInfo);
       this.flare("postrender");
     },
 
-    _render: function(src, dst) {},
+    _render: function(src, dst, sizeInfo) {},
 
     addTo: function(layer) {
       layer.addNode(this);
@@ -809,8 +831,34 @@ phina.namespace(function() {
       return ["texture", "x", "y", "strength"];
     },
 
+    _accessor: {
+      x: {
+        get: function() {
+          return this.uniformValues["x"];
+        },
+        set: function(v) {
+          this.uniformValues["x"] = v;
+        },
+      },
+      y: {
+        get: function() {
+          return this.uniformValues["y"];
+        },
+        set: function(v) {
+          this.uniformValues["y"] = v;
+        },
+      },
+      strength: {
+        get: function() {
+          return this.uniformValues["strength"];
+        },
+        set: function(v) {
+          this.uniformValues["strength"] = v;
+        },
+      },
+    },
+
   });
 
 });
-
 //# sourceMappingURL=phina.glfilter.js.map

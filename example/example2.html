@@ -11,8 +11,7 @@
 <body>
   <canvas id="app"></canvas>
   <script src="https://rawgit.com/phinajs/phina.js/develop/build/phina.js"></script>
-  <!-- <script src="https://rawgit.com/daishihmr/phigl.js/develop/build/phigl.js"></script> -->
-  <script src="/phigl.js/build/phigl.js"></script>
+  <script src="https://rawgit.com/daishihmr/phigl.js/develop/build/phigl.js"></script>
   <script src="../build/phina.glfilter.js"></script>
   <script>
   phina.globalize();
@@ -81,7 +80,7 @@
       this.on("enterframe", (e) => {
         const t = e.app.frame;
         bloomNode.minBright = 1.0 - Math.abs(Math.sin(t * 0.02));
-      zb.uniformValues["strength"] = Math.abs(Math.sin(t * 0.02)) * 5;
+        zb.uniformValues["strength"] = Math.abs(Math.sin(t * 0.02)) * 5;
       })
     },
   });

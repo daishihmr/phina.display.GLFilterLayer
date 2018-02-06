@@ -26,10 +26,10 @@ phina.namespace(function() {
       this.bloomPath1 = phigl.Framebuffer(gl, sizeInfo.width, sizeInfo.height);
     },
 
-    _render: function(src, dst) {
-      this.luminanceNode.render(src, this.bloomPath0);
-      this.gaussianNode.render(this.bloomPath0, this.bloomPath1);
-      this.mixNode.render(src, this.bloomPath1, dst);
+    _render: function(src, dst, sizeInfo) {
+      this.luminanceNode.render(src, this.bloomPath0, sizeInfo);
+      this.gaussianNode.render(this.bloomPath0, this.bloomPath1, sizeInfo);
+      this.mixNode.render(src, this.bloomPath1, dst, sizeInfo);
     },
 
     _accessor: {

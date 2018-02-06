@@ -5,6 +5,10 @@ phina.namespace(function() {
 
     init: function() {
       this.superInit();
+      this.on("prerender", function(e) {
+        var sizeInfo = e.sizeInfo;
+        this.resolution = [sizeInfo.width, sizeInfo.height];
+      });
     },
 
     getFragmentShaderSource: function() {
@@ -63,9 +67,20 @@ phina.namespace(function() {
     getFragmentShaderUniforms: function() {
       return [
         "texture",
-        "resolution", // 画面の解像度
-        "direction", // ブレ方向
+        "resolution", // 画面の解像度 as vec2
+        "direction", // ブレ方向 as vec2
       ];
+    },
+
+    _accessor: {
+      resolution: {
+        get: function() {
+          return this.uniformValues["resolution"];
+        },
+        set: function(v) {
+          this.uniformValues["resolution"] = v;
+        },
+      },
     },
 
   });

@@ -47,6 +47,33 @@ phina.namespace(function() {
       return ["texture", "x", "y", "strength"];
     },
 
+    _accessor: {
+      x: {
+        get: function() {
+          return this.uniformValues["x"];
+        },
+        set: function(v) {
+          this.uniformValues["x"] = v;
+        },
+      },
+      y: {
+        get: function() {
+          return this.uniformValues["y"];
+        },
+        set: function(v) {
+          this.uniformValues["y"] = v;
+        },
+      },
+      strength: {
+        get: function() {
+          return this.uniformValues["strength"];
+        },
+        set: function(v) {
+          this.uniformValues["strength"] = v;
+        },
+      },
+    },
+
   });
 
 });

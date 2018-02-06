@@ -9,7 +9,7 @@ phina.namespace(function() {
       this.uniformValues["weight1"] = weight1;
     },
 
-    render: function(src0, src1, dst) {
+    render: function(src0, src1, dst, sizeInfo) {
       var gl = this.layer.gl;
 
       dst.bind();

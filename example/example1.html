@@ -11,8 +11,7 @@
 <body>
   <canvas id="app"></canvas>
   <script src="https://rawgit.com/phinajs/phina.js/develop/build/phina.js"></script>
-  <!-- <script src="https://rawgit.com/daishihmr/phigl.js/develop/build/phigl.js"></script> -->
-  <script src="/phigl.js/build/phigl.js"></script>
+  <script src="https://rawgit.com/daishihmr/phigl.js/develop/build/phigl.js"></script>
   <script src="../build/phina.glfilter.js"></script>
   <script>
   phina.globalize();
@@ -68,17 +67,21 @@
         .setPosition(this.gridX.span(8), this.gridY.center())
         .addChildTo(fgLayer);
 
-      const gaussian = MultiGaussianNode().addTo(bgLayer);
-      this.on("enterframe", (e) => {
-        gaussian.unit = Math.abs(Math.sin(e.app.frame * 0.02) * 3);
-      });
+      // const gaussian = MultiGaussianNode().addTo(bgLayer);
+      // this.on("enterframe", (e) => {
+      //   gaussian.unit = Math.abs(Math.sin(e.app.frame * 0.02) * 3/4);
+      // });
       const zoomBlur = ZoomBlurNode();
-      zoomBlur.uniformValues["x"] = 0.5;
-      zoomBlur.uniformValues["y"] = 0.5;
+      zoomBlur.x = 0.5;
+      zoomBlur.y = 0.5;
+      zoomBlur.strength = 20;
       zoomBlur.addTo(fgLayer);
-      this.on("enterframe", (e) => {
-        zoomBlur.uniformValues["strength"] = Math.abs(Math.sin(e.app.frame * 0.07) * 20);
-      });
+      // this.on("enterframe", (e) => {
+      //   zoomBlur.strength = Math.abs(Math.sin(e.app.frame * 0.07) * 20);
+      // });
+
+      bgLayer.enableGL = false;
+      fgLayer.enableGL = true;
 
     },
   });
