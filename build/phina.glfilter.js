@@ -39,7 +39,7 @@ phina.namespace(function() {
 
       // 3D
       this.sizeInfo = phigl.ImageUtil.calcSizePowOf2(width * options.quarity, height * options.quarity);
-      this.domElementGL = document.createElement("canvas");
+      this.domElementGL = options.domElementGL || document.createElement("canvas");
 
       var gl = this.gl = this.domElementGL.getContext("webgl");
 
@@ -48,6 +48,9 @@ phina.namespace(function() {
       gl.viewport(0, 0, this.sizeInfo.width, this.sizeInfo.height);
 
       gl.clearColor(0.0, 0.0, 0.0, 0.0);
+      gl.enable(gl.BLEND);
+      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE);
+      gl.blendEquationSeparate(gl.FUNC_ADD, gl.FUNC_ADD);
 
       this.resizedCanvas = phina.graphics.Canvas();
       this.resizedCanvas.setSize(this.sizeInfo.width, this.sizeInfo.height);
@@ -104,8 +107,10 @@ phina.namespace(function() {
       // 2D
       var temp = this._worldMatrix;
       this._worldMatrix = null;
+      this._worldAlpha = 1 / this._worldAlpha;
       this.renderer.render(this);
       this._worldMatrix = temp;
+      this._worldAlpha = 1 / this._worldAlpha;
 
       if (this.enableGL) {
         // 3D

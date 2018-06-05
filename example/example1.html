@@ -11,14 +11,16 @@
 <body>
   <canvas id="app"></canvas>
   <script src="https://rawgit.com/phinajs/phina.js/develop/build/phina.js"></script>
-  <script src="https://rawgit.com/daishihmr/phigl.js/develop/build/phigl.js"></script>
+  <!-- <script src="https://rawgit.com/daishihmr/phigl.js/develop/build/phigl.js"></script> -->
+  <script src="../../phigl.js/build/phigl.js"></script>
   <script src="../build/phina.glfilter.js"></script>
   <script>
   phina.globalize();
 
   phina.main(() => {
     const app = GameApp({
-      domElement: document.querySelector("#app"),
+      // domElement: document.querySelector("#app"),
+      backgroundColor: "black",
       startLabel: "main",
       width: 1500,
       height: 850,
@@ -26,7 +28,7 @@
       assets: {
         image: {
           "bg": "bg.jpg",
-          "logo": "logo.png",
+          "logo": "cureyell.png",
         },
       },
     }).run();
@@ -50,8 +52,10 @@
         originY: 0,
         x: 0,
         y: 0,
-        quarity: 0.25,
+        quarity: 1 / 2,
       }).addChildTo(this);
+
+      const de = DisplayElement().addChildTo(this);
       const fgLayer = GLFilterLayer({
         width: 1500,
         height: 850,
@@ -59,8 +63,8 @@
         originY: 0,
         x: 0,
         y: 0,
-        quarity: 0.25,
-      }).addChildTo(this);
+        quarity: 1 / 2,
+      }).addChildTo(de);
 
       const bg = Sprite("bg")
         .setPosition(this.gridX.center(), this.gridY.center())
@@ -69,21 +73,28 @@
         .setPosition(this.gridX.span(8), this.gridY.center())
         .addChildTo(fgLayer);
 
+      fgLayer.alpha = 0.5;
+
       // const gaussian = MultiGaussianNode().addTo(bgLayer);
       // this.on("enterframe", (e) => {
       //   gaussian.unit = Math.abs(Math.sin(e.app.frame * 0.02) * 3/4);
       // });
-      const zoomBlur = ZoomBlurNode();
-      zoomBlur.x = 0.5;
-      zoomBlur.y = 0.5;
-      zoomBlur.strength = 20;
-      zoomBlur.addTo(fgLayer);
+      // const zoomBlur = ZoomBlurNode();
+      // zoomBlur.x = 0.5;
+      // zoomBlur.y = 0.5;
+      // zoomBlur.strength = 20;
+      // zoomBlur.addTo(fgLayer);
       // this.on("enterframe", (e) => {
       //   zoomBlur.strength = Math.abs(Math.sin(e.app.frame * 0.07) * 20);
       // });
 
-      bgLayer.enableGL = false;
-      fgLayer.enableGL = true;
+      this.tweener
+        .wait(500)
+        .call(() => {
+          bgLayer.enableGL = !bgLayer.enableGL;
+          fgLayer.enableGL = !fgLayer.enableGL;
+        })
+        .setLoop(true);
 
     },
   });
